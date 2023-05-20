@@ -24,8 +24,6 @@ MinVersion=0,@ISS_MIN_WIN_VERSION@
 SetupIconFile=@CMAKE_SOURCE_DIR@\data\@PACKAGE_ICON@.ico
 OutputBaseFilename=stellarium-@ISS_PACKAGE_VERSION@-@ISS_PACKAGE_PLATFORM@
 OutputDir=@CMAKE_SOURCE_DIR@\installers
-; In 64-bit mode, {pf} is equivalent to {pf64},
-; see http://www.jrsoftware.org/ishelp/index.php?topic=32vs64bitinstalls
 DefaultDirName={pf}\Stellarium
 DefaultGroupName=Stellarium
 UninstallDisplayIcon={app}\data\stellarium.ico

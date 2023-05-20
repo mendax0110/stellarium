@@ -37,7 +37,10 @@ void CLIProcessor::parseCLIArgsPreQApp(const QStringList argList)
 {
 #ifdef Q_OS_WIN
 	if (argsGetOption(argList, "-s", "--safe-mode"))
+	{
+		qDebug() << "DEPRECATION NOTE: --safe-mode given on command line. Use --mesa-mode instead!";
 		qputenv("QT_OPENGL", "software");
+	}
 
 	if (argsGetOption(argList, "-a", "--angle-mode"))
 		qputenv("QT_OPENGL", "angle");
@@ -60,6 +63,19 @@ void CLIProcessor::parseCLIArgsPreQApp(const QStringList argList)
 	if (argsGetOption(argList, "-m", "--mesa-mode"))
 		qputenv("QT_OPENGL", "software");
 #endif
+	// Override user dir. This must be made via environment variable, else an empty user dir is created before resetting (GH:#3079)
+	try
+	{
+		QString newUserDir;
+		newUserDir = argsGetOptionWithArg(argList, "-u", "--user-dir", "").toString();
+		if (newUserDir!="" && !newUserDir.isEmpty())
+			qputenv("STEL_USERDIR", newUserDir.toLocal8Bit());
+	}
+	catch (std::runtime_error& e)
+	{
+		qCritical() << "ERROR: while processing --user-dir option: " << e.what();
+		exit(1);
+	}
 }
 
 void CLIProcessor::parseCLIArgsPreConfig(const QStringList& argList)
@@ -120,7 +136,7 @@ void CLIProcessor::parseCLIArgsPreConfig(const QStringList& argList)
 			  << "--angle-d3d11           : Force use Direct3D 11 for ANGLE OpenGL ES2 rendering engine\n"
 			  << "--angle-warp            : Force use the Direct3D 11 software rasterizer for ANGLE OpenGL ES2 rendering engine\n"
 			  << "--mesa-mode (or -m)     : Use MESA as software OpenGL rendering engine\n"
-			  << "--safe-mode (or -s)     : Synonymous to --mesa-mode \n"
+			  << "--safe-mode (or -s)     : DEPRECATED! Synonymous to --mesa-mode \n"
 			  #ifdef ENABLE_SPOUT
 			  << "--spout (or -S) <sky|all> : Act as SPOUT sender (Sky only/including GUI)\n"
 			  << "--spout-name <name>     : Set particular name for SPOUT sender.\n"
@@ -153,19 +169,6 @@ void CLIProcessor::parseCLIArgsPreConfig(const QStringList& argList)
 				std::cout << qPrintable(i) << std::endl;
 		}
 		exit(0);
-	}
-
-	try
-	{
-		QString newUserDir;
-		newUserDir = argsGetOptionWithArg(argList, "-u", "--user-dir", "").toString();
-		if (newUserDir!="" && !newUserDir.isEmpty())
-			StelFileMgr::setUserDir(newUserDir);
-	}
-	catch (std::runtime_error& e)
-	{
-		qCritical() << "ERROR: while processing --user-dir option: " << e.what();
-		exit(1);
 	}
 }
 

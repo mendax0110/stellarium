@@ -617,8 +617,8 @@ void SearchDialog::recentSearchClearDataClicked()
 
 void SearchDialog::setRecentSearchClearDataPushButton()
 {
-	// Enable clear button if recent list is greater than 0
-	bool toEnable = recentObjectSearchesData.recentList.size() > 0;
+	// Enable clear button if recent list is not empty
+	bool toEnable = !recentObjectSearchesData.recentList.isEmpty();
 	ui->recentSearchClearDataPushButton->setEnabled(toEnable);
 	// Tool tip depends on recent list size
 	QString toolTipText = toEnable ? q_("Clear search history: delete all search objects data") : q_("Clear search history: no data to delete");
@@ -1273,6 +1273,7 @@ void SearchDialog::gotoObjectWithType(const QModelIndex &modelIndex)
 	objType.replace("Nomenclature","NomenclatureItem");
 	// plug-ins
 	objType.replace("Supernovae","Supernova");
+	objType.replace("Satellites","Satellite");
 	objType.replace("Novae","Nova");
 	objType.replace("Exoplanets","Exoplanet");
 	objType.replace("Pulsars","Pulsar");

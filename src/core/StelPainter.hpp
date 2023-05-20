@@ -357,7 +357,7 @@ private:
 
 	// From text-use-opengl-buffer
 	static QCache<QByteArray, struct StringTexture> texCache;
-	struct StringTexture* getTexTexture(const QString& str, int pixelSize) const;
+	struct StringTexture* getTextTexture(const QString& str, int pixelSize) const;
 
 	//! Struct describing one opengl array
 	typedef struct ArrayDesc
@@ -373,6 +373,8 @@ private:
 	//! Project an array using the current projection.
 	//! @return a descriptor of the new array
 	ArrayDesc projectArray(const ArrayDesc& array, int offset, int count, const unsigned short *indices=Q_NULLPTR);
+
+	void drawFixedColorWideLinesAsQuads(const ArrayDesc& vertexArray, int count, int offset, const Mat4f& projMat, DrawingMode mode);
 
 	//! Project the passed triangle on the screen ensuring that it will look smooth, even for non linear distortion
 	//! by splitting it into subtriangles. The resulting vertex arrays are appended to the passed out* ones.

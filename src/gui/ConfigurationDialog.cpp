@@ -267,6 +267,7 @@ void ConfigurationDialog::createDialogContent()
 	}
 	ui->dateFormatsComboBox->setCurrentIndex(idx);
 	connect(ui->dateFormatsComboBox, SIGNAL(currentIndexChanged(const int)), this, SLOT(setDateFormat()));
+	connectBoolProperty(ui->startupTimeStopCheckBox, "StelCore.startupTimeStop");
 
 	// Display formats of time
 	populateTimeFormatsList();
@@ -336,6 +337,8 @@ void ConfigurationDialog::createDialogContent()
 
 	connectBoolProperty(ui->mouseTimeoutCheckbox,				"MainView.flagCursorTimeout");
 	connectDoubleProperty(ui->mouseTimeoutSpinBox,				"MainView.cursorTimeout");
+	connectIntProperty(ui->minFpsSpinBox,                                   "MainView.minFps");
+	connectIntProperty(ui->maxFpsSpinBox,                                   "MainView.maxFps");
 	connectBoolProperty(ui->useButtonsBackgroundCheckBox,		"StelGui.flagUseButtonsBackground");
 	connectBoolProperty(ui->indicationMountModeCheckBox,			"StelMovementMgr.flagIndicationMountMode");
 	connectBoolProperty(ui->kineticScrollingCheckBox,				"StelGui.flagUseKineticScrolling");
@@ -1155,6 +1158,7 @@ void ConfigurationDialog::saveAllSettings()
 	conf->setValue("navigation/flag_enable_mouse_zooming",		mvmgr->getFlagEnableMouseZooming());
 	conf->setValue("navigation/flag_enable_move_keys",		mvmgr->getFlagEnableMoveKeys());
 	conf->setValue("navigation/startup_time_mode",			core->getStartupTimeMode());
+	conf->setValue("navigation/startup_time_stop",			core->getStartupTimeStop());
 	conf->setValue("navigation/today_time",				core->getInitTodayTime());
 	conf->setValue("navigation/preset_sky_time",			core->getPresetSkyTime());
 	conf->setValue("navigation/time_correction_algorithm",	core->getCurrentDeltaTAlgorithmKey());
@@ -1187,6 +1191,8 @@ void ConfigurationDialog::saveAllSettings()
 	conf->setValue("gui/screen_font_size",				propMgr->getStelPropertyValue("StelApp.screenFontSize").toInt());
 	conf->setValue("gui/gui_font_size",				propMgr->getStelPropertyValue("StelApp.guiFontSize").toInt());
 
+	conf->setValue("video/minimum_fps",				propMgr->getStelPropertyValue("MainView.minFps").toInt());
+	conf->setValue("video/maximum_fps",				propMgr->getStelPropertyValue("MainView.maxFps").toInt());
 
 	conf->setValue("main/screenshot_dir",				StelFileMgr::getScreenshotDir());
 	conf->setValue("main/invert_screenshots_colors",		propMgr->getStelPropertyValue("MainView.flagInvertScreenShotColors").toBool());
@@ -1211,10 +1217,10 @@ void ConfigurationDialog::saveAllSettings()
 	{
 		QRect screenGeom = QGuiApplication::screens().at(screenNum)->geometry();
 
-		conf->setValue("video/screen_w", mainWindow.size().width());
-		conf->setValue("video/screen_h", mainWindow.size().height());
-		conf->setValue("video/screen_x", mainWindow.x() - screenGeom.x());
-		conf->setValue("video/screen_y", mainWindow.y() - screenGeom.y());
+		conf->setValue("video/screen_w", int(std::lround(mainWindow.size().width() * mainWindow.devicePixelRatio())));
+		conf->setValue("video/screen_h", int(std::lround(mainWindow.size().height() * mainWindow.devicePixelRatio())));
+		conf->setValue("video/screen_x", int(std::lround((mainWindow.x() - screenGeom.x()) * mainWindow.devicePixelRatio())));
+		conf->setValue("video/screen_y", int(std::lround((mainWindow.y() - screenGeom.y()) * mainWindow.devicePixelRatio())));
 	}
 
 	// clear the restore defaults flag if it is set.

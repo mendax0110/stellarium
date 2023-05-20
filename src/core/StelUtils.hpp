@@ -85,11 +85,14 @@ namespace StelUtils
 	//! Return the full name of stellarium, i.e. "Stellarium 23.1"
 	QString getApplicationName();
 
-	//! Return the version of stellarium, i.e. "0.23.1"
+	//! Return the version of stellarium, i.e. "23.1.0"
 	QString getApplicationVersion();
 
 	//! Return the public version of stellarium, i.e. "23.1"
 	QString getApplicationPublicVersion();
+
+	//! Return the series of stellarium, i.e. "23.0"
+	QString getApplicationSeries();
 
 	//! Return the name and the version of operating system, i.e. "macOS 12.5"
 	QString getOperatingSystemInfo();
@@ -362,8 +365,11 @@ namespace StelUtils
 		return (value & -value) == value;
 	}
 
-	//! Return the first power of two bigger than the given value.
+	//! Return the smallest power of two greater than or equal to the given value.
 	int getBiggerPowerOfTwo(int value);
+
+	//! Return the largest power of two smaller than or equal to the given value
+	int getSmallerPowerOfTwo(const int value);
 
 	//! Return the inverse sinus hyperbolic of z.
 	inline double asinh(const double z){

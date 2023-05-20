@@ -607,7 +607,7 @@ void MpcImportWindow::startDownload(QString urlString)
 	request.setUrl(QUrl(url));
 	request.setRawHeader("User-Agent", StelUtils::getUserAgentString().toUtf8());
 #if (QT_VERSION<QT_VERSION_CHECK(6,0,0))
-	request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+	request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, true);
 #endif
 	downloadReply = networkManager->get(request);
 	connect(downloadReply, SIGNAL(downloadProgress(qint64,qint64)), this, SLOT(updateDownloadProgress(qint64,qint64)));
@@ -780,7 +780,7 @@ void MpcImportWindow::sendQueryToUrl(QUrl url)
 	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded"); //Is this really necessary?
 	request.setHeader(QNetworkRequest::ContentLengthHeader, url.query(QUrl::FullyEncoded).length());
 #if (QT_VERSION<QT_VERSION_CHECK(6,0,0))
-	request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+	request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, true);
 #endif
 
 	connect(networkManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(receiveQueryReply(QNetworkReply*)));
@@ -1047,6 +1047,7 @@ void MpcImportWindow::loadBookmarks()
 	bookmarks[MpcMinorPlanets].insert("MPC's list of observable critical-list numbered minor planets", 	"https://www.minorplanetcenter.net/iau/Ephemerides/CritList/Soft00CritList.txt");
 	bookmarks[MpcMinorPlanets].insert("MPC's list of observable distant minor planets", 			"https://www.minorplanetcenter.net/iau/Ephemerides/Distant/Soft00Distant.txt");
 	bookmarks[MpcMinorPlanets].insert("MPC's list of observable unusual minor planets", 			"https://www.minorplanetcenter.net/iau/Ephemerides/Unusual/Soft00Unusual.txt");
+	bookmarks[MpcMinorPlanets].insert("MPC's list of bright minor planets for 2023",			"https://www.minorplanetcenter.net/iau/Ephemerides/Bright/2023/Soft00Bright.txt");
 
 	bookmarks[MpcMinorPlanets].insert("MPCORB: near-Earth asteroids (NEAs)", 				"https://www.minorplanetcenter.net/iau/MPCORB/NEA.txt");
 	bookmarks[MpcMinorPlanets].insert("MPCORB: potentially hazardous asteroids (PHAs)", 			"https://www.minorplanetcenter.net/iau/MPCORB/PHA.txt");

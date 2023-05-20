@@ -219,7 +219,8 @@ Satellite::Satellite(const QString& identifier, const QVariantMap& map)
 		{ gSatWrapper::VISIBLE,		N_("The satellite is sunlit and the observer is in the dark") },
 		{ gSatWrapper::RADAR_NIGHT,	N_("The satellite isn't sunlit") },
 		{ gSatWrapper::PENUMBRAL,	N_("The satellite is in penumbra") },
-		{ gSatWrapper::ANNULAR,		N_("The satellite is eclipsed") }
+		{ gSatWrapper::ANNULAR,		N_("The satellite is eclipsed") },
+		{ gSatWrapper::BELOW_HORIZON,   N_("The satellite is below the horizon") }
 	};
 
 	update(0.);
@@ -447,7 +448,7 @@ QString Satellite::getInfoString(const StelCore *core, const InfoStringGroup& fl
 		//Visibility: Full text		
 		oss << q_(visibilityDescription.value(visibility, "")) << "<br />";
 
-		if (comms.size() > 0)
+		if (!comms.isEmpty())
 		{
 			oss << q_("Radio communication") << ":<br/>";
 			for (const auto& c : comms)
@@ -521,7 +522,7 @@ void Satellite::calculateSatDataFromLine2(QString tle)
 void Satellite::calculateEpochFromLine1(QString tle)
 {
 	QString epochStr;
-	// Details: https://celestrak.com/columns/v04n03/ or https://en.wikipedia.org/wiki/Two-line_element_set
+	// Details: https://celestrak.org/columns/v04n03/ or https://en.wikipedia.org/wiki/Two-line_element_set
 	int year = tle.left(20).right(2).toInt();
 	if (year>=0 && year<57)
 		year += 2000;
@@ -672,8 +673,8 @@ float Satellite::getVMagnitude(const StelCore* core) const
 				m[2].rotate(-120, Vz);
 
 				StelLocation loc   = StelApp::getInstance().getCore()->getCurrentLocation();
-				const double  radLatitude    = loc.latitude * KDEG2RAD;
-				const double  theta          = pSatWrapper->getEpoch().toThetaLMST(loc.longitude * KDEG2RAD);
+				const double  radLatitude    = loc.getLatitude() * KDEG2RAD;
+				const double  theta          = pSatWrapper->getEpoch().toThetaLMST(loc.getLongitude() * KDEG2RAD);
 				const double sinRadLatitude=sin(radLatitude);
 				const double cosRadLatitude=cos(radLatitude);
 				const double sinTheta=sin(theta);
@@ -857,7 +858,7 @@ Vec4d Satellite::getUmbraData()
 	static PlanetP earth=GETSTELMODULE(SolarSystem)->getEarth();
 	// Compute altitudes of umbra and penumbra circles. These should show where the satellite enters/exits umbra/penumbra.
 	// The computation follows ideas from https://celestrak.org/columns/v03n01/
-	// These sources mention ECI coordinates (Earth Centered Intertial). Presumably TEME (True Equator Mean Equinox) are equivalent, at least for our purposes.
+	// These sources mention ECI coordinates (Earth Centered Inertial). Presumably TEME (True Equator Mean Equinox) are equivalent, at least for our purposes.
 	const double rhoE=position.norm(); // geocentric Satellite distance, km
 	const double rS=earth->getHeliocentricEclipticPos().norm()*AU; // distance earth...sun
 	const double thetaE=asin((earth->getEquatorialRadius()*AU)/(rhoE));
@@ -1003,7 +1004,7 @@ bool Satellite::getCustomFiltersFlag() const
 	bool cfe = true;
 	if (flagCFEccentricity)
 		cfe = (eccentricity>=minCFEccentricity && eccentricity<=maxCFEccentricity);
-	// Known standrad magnitude
+	// Known standard magnitude
 	bool cfm = true;
 	if (flagCFKnownStdMagnitude)
 		cfm = (stdMag<99.0);

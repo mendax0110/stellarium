@@ -166,6 +166,10 @@ int main(int argc, char **argv)
 	QCoreApplication::setOrganizationDomain("stellarium.org");
 	QCoreApplication::setOrganizationName("stellarium");
 
+	QCoreApplication::setAttribute(Qt::AA_CompressHighFrequencyEvents);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+	QCoreApplication::setAttribute(Qt::AA_CompressTabletEvents);
+#endif
 	// Support high DPI pixmaps and fonts
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 	QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps, true);
@@ -189,7 +193,6 @@ int main(int argc, char **argv)
 	// This must be run before QGuiApplication, otherwise it'll have no effect.
 	CLIProcessor::parseCLIArgsPreQApp(argList);
 
-	QCoreApplication::setAttribute(Qt::AA_CompressHighFrequencyEvents);
 #ifndef USE_QUICKVIEW
 	QApplication::setStyle(QStyleFactory::create("Fusion"));
 	// The QApplication MUST be created before the StelFileMgr is initialized.
@@ -223,7 +226,7 @@ int main(int argc, char **argv)
 
 	// add contents of STEL_OPTS environment variable.
 	QString envStelOpts(qgetenv("STEL_OPTS").constData());
-	if (envStelOpts.length()>0)
+	if (!envStelOpts.isEmpty())
 	{
 		argList+= envStelOpts.split(" ");
 		argStr += " " + envStelOpts;
@@ -397,17 +400,22 @@ int main(int argc, char **argv)
 		qWarning() << "WARNING: screen" << screen << "not found";
 		screen = 0;
 	}
-	const QRect screenGeom = qApp->screens().at(screen)->geometry();
+	const auto qscreen = qApp->screens().at(screen);
+	const QRect screenGeom = qscreen->geometry();
+	const auto pixelRatio = qscreen->devicePixelRatio();
 
-	const auto size = QSize(confSettings->value("video/screen_w", screenGeom.width()).toInt(),
-							confSettings->value("video/screen_h", screenGeom.height()).toInt());
+	const auto virtSize = QSize(confSettings->value("video/screen_w", screenGeom.width()).toInt(),
+								confSettings->value("video/screen_h", screenGeom.height()).toInt());
+	const auto size = QSize(std::lround(virtSize.width()/pixelRatio),
+							std::lround(virtSize.height()/pixelRatio));
 	mainWin.resize(size);
 
 	const bool fullscreen = confSettings->value("video/fullscreen", true).toBool();
 	if (fullscreen)
 	{
 		// The "+1" below is to work around Linux/Gnome problem with mouse focus.
-		mainWin.move(screenGeom.x()+1, screenGeom.y()+1);
+		mainWin.move(screenGeom.x()+1,
+					 screenGeom.y()+1);
 		// The fullscreen window appears on screen where is the majority of
 		// the normal window. Therefore we crop the normal window to the
 		// screen area to ensure that the majority is not on another screen.
@@ -418,7 +426,8 @@ int main(int argc, char **argv)
 	{
 		const int x = confSettings->value("video/screen_x", 0).toInt();
 		const int y = confSettings->value("video/screen_y", 0).toInt();
-		mainWin.move(x + screenGeom.x(), y + screenGeom.y());
+		mainWin.move(screenGeom.x() + x/pixelRatio,
+					 screenGeom.y() + y/pixelRatio);
 	}
 
 	mainWin.show();

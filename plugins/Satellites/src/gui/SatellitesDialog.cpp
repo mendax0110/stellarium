@@ -51,6 +51,12 @@
 #include "StelActionMgr.hpp"
 #include "StelMainView.hpp"
 
+#if defined(ENABLE_XLSX) && (SATELLITES_PLUGIN_IRIDIUM == 1)
+#include <xlsxdocument.h>
+#include <xlsxcellrange.h>
+using namespace QXlsx;
+#endif
+
 const QString SatellitesDialog::dash = QChar(0x2014);
 
 SatellitesDialog::SatellitesDialog()
@@ -186,8 +192,11 @@ void SatellitesDialog::createDialogContent()
 	handleOrbitLinesGroup(ui->orbitLinesCheckBox->isChecked());
 	// Logic sub-group: Umbra
 	connectBoolProperty(ui->umbraCheckBox,      "Satellites.flagUmbraVisible");
-	connectBoolProperty(ui->umbraAtDistance,    "Satellites.flagUmbraAtFixedDistance");
-	connectDoubleProperty(ui->umbraDistance,       "Satellites.umbraDistance");
+	// V23.1: We must disable this button for now.
+	//connectBoolProperty(ui->umbraAtDistance,    "Satellites.flagUmbraAtFixedDistance");
+	//connectDoubleProperty(ui->umbraDistance,       "Satellites.umbraDistance");
+	ui->umbraAtDistance->hide();
+	ui->umbraDistance->hide();
 	connect(ui->umbraCheckBox, SIGNAL(clicked(bool)), this, SLOT(handleUmbraGroup(bool)));
 	handleUmbraGroup(ui->umbraCheckBox->isChecked());
 	// Logic sub-group: Markers
@@ -313,7 +322,6 @@ void SatellitesDialog::createDialogContent()
 	connect(ui->predictedIridiumFlaresSaveButton, SIGNAL(clicked()), this, SLOT(savePredictedIridiumFlares()));
 	connect(ui->iridiumFlaresTreeWidget, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(selectCurrentIridiumFlare(QModelIndex)));
 #endif
-
 }
 
 void SatellitesDialog::enableMinMaxAltitude(bool state)
@@ -355,7 +363,7 @@ void SatellitesDialog::askSatMarkerColor()
 	QColor c = QColorDialog::getColor(buttonMarkerColor, &StelMainView::getInstance(), "");
 	if (c.isValid())
 	{
-		Vec3f vColor = Vec3d(c.redF(), c.greenF(), c.blueF()).toVec3f();
+		Vec3f vColor(c);
 		SatelliteP sat;
 		// colourize all selected satellites
 		for (int i = 0; i < selection.size(); i++)
@@ -383,7 +391,7 @@ void SatellitesDialog::askSatOrbitColor()
 	QColor c = QColorDialog::getColor(buttonOrbitColor, &StelMainView::getInstance(), "");
 	if (c.isValid())
 	{
-		Vec3f vColor = Vec3d(c.redF(), c.greenF(), c.blueF()).toVec3f();
+		Vec3f vColor(c);
 		SatelliteP sat;
 		// colourize all selected satellites
 		for (int i = 0; i < selection.size(); i++)
@@ -411,7 +419,7 @@ void SatellitesDialog::askSatInfoColor()
 	QColor c = QColorDialog::getColor(buttonInfoColor, &StelMainView::getInstance(), "");
 	if (c.isValid())
 	{
-		Vec3f vColor = Vec3d(c.redF(), c.greenF(), c.blueF()).toVec3f();
+		Vec3f vColor(c);
 		SatelliteP sat;
 		// colourize all selected satellites
 		for (int i = 0; i < selection.size(); i++)
@@ -1570,7 +1578,7 @@ void SatellitesDialog::selectCurrentIridiumFlare(const QModelIndex &modelIndex)
 void SatellitesDialog::savePredictedIridiumFlares()
 {
 	QString csv  = QString("%1 (*.csv)").arg(q_("CSV (Comma delimited)"));
-	QSrting xlsx = QString("%1 (*.xlsx)").arg(q_("Microsoft Excel Open XML Spreadsheet"));
+	QString xlsx = QString("%1 (*.xlsx)").arg(q_("Microsoft Excel Open XML Spreadsheet"));
 	QString filter, defaultExtension;
 
 	#ifdef ENABLE_XLSX

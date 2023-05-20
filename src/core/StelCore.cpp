@@ -90,6 +90,7 @@ StelCore::StelCore()
 	, jdOfLastJDUpdate(0.)
 	, flagUseDST(true)
 	, flagUseCTZ(false)
+	, startupTimeStop(false)
 	, deltaTCustomNDot(-26.0)
 	, deltaTCustomYear(1820.0)
 	, deltaTnDot(-26.0)
@@ -260,6 +261,9 @@ void StelCore::init()
 		setJD(presetSkyTime - static_cast<double>(getUTCOffset(presetSkyTime)) * JD_HOUR);
 	else if (startupTimeMode=="today")
 		setTodayTime(getInitTodayTime());
+	startupTimeStop = conf->value("navigation/startup_time_stop", false).toBool();
+	if (startupTimeStop)
+		setZeroTimeSpeed();
 
 	// Compute transform matrices between coordinates systems
 	updateTransformMatrices();
@@ -1224,7 +1228,7 @@ void StelCore::moveObserverToSelected()
 
 				// Let's try guess name of location...
 				LocationMap results = StelApp::getInstance().getLocationMgr().pickLocationsNearby(loc.planetName, loc.getLongitude(), loc.getLatitude(), 1.0f);
-				if (results.size()>0)
+				if (!results.isEmpty())
 					loc = results.value(results.firstKey()); // ...and use it!
 
 				moveObserverTo(loc);
@@ -1274,7 +1278,7 @@ void StelCore::setObserver(StelObserver *obs)
 {
 	delete position;
 	position = obs;
-	if (!getUseCustomTimeZone() && obs->getCurrentLocation().ianaTimeZone.length()>0)
+	if (!getUseCustomTimeZone() && !obs->getCurrentLocation().ianaTimeZone.isEmpty())
 		setCurrentTimeZone(obs->getCurrentLocation().ianaTimeZone);
 }
 
@@ -1499,6 +1503,17 @@ void StelCore::setUseCustomTimeZone(const bool b)
 {
 	flagUseCTZ = b;
 	emit useCustomTimeZoneChanged(b);
+}
+
+bool StelCore::getStartupTimeStop() const
+{
+	return startupTimeStop;
+}
+
+void StelCore::setStartupTimeStop(const bool b)
+{
+	startupTimeStop = b;
+	emit startupTimeStopChanged(b);
 }
 
 double StelCore::getSolutionEquationOfTime(const double JDE) const

@@ -305,6 +305,8 @@ private slots:
 	void saveEphemeris();	
 	void onChangedEphemerisPosition();
 	void reGenerateEphemeris();
+	void setDateTimeNow();
+	void saveIgnoreDateTestFlag(bool b);
 
 	//! Calculating the rises, transits and sets for selected celestial body and fill the list.
 	void generateRTS();
@@ -686,6 +688,7 @@ private:
 		PHCMoonsFirstBody           = 25,
 		PHCBrightCarbonStars        = 26,
 		PHCBrightBariumStars        = 27,
+		PHCSunPlanetsTheirMoons     = 28,
 		PHCNone	// stop gapper for syntax reasons
 	};
 
@@ -736,7 +739,7 @@ private:
 	};
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class ACCelPosTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -791,7 +794,7 @@ private:
 	}
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class AHECPosTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -820,7 +823,7 @@ private:
 	}
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class ACEphemTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -853,7 +856,7 @@ private:
 	}
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class ACRTSTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -886,7 +889,7 @@ private:
 	}
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class ACLunarEclipseTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -929,7 +932,7 @@ public:
 	LunarEclipseIteration(double &JD, double &positionAngle, double &axisDistance, bool beforeMaximum, int eclipseType);
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class, but currently nothing else.
 class ACLunarEclipseContactsTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -939,7 +942,7 @@ public:
 	}
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class ACSolarEclipseTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -968,6 +971,7 @@ private:
 	}
 };
 
+//! Derived from QTreeWidgetItem class with customized sort
 class ACSolarEclipseContactsTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -1000,7 +1004,7 @@ public:
 	double &ldot, double &etadot, double &bdot, double &cdot, bool penumbra);
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class ACSolarEclipseLocalTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -1025,7 +1029,7 @@ private:
 	}
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class ACTransitTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -1058,7 +1062,7 @@ public:
 	double &besDec, double &besTf1, double &besTf2, double &besL1, double &besL2, double &besMu);
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class ACPhenTreeWidgetItem : public QTreeWidgetItem
 {
 public:
@@ -1091,7 +1095,7 @@ private:
 	}
 };
 
-// Reimplements the QTreeWidgetItem class to fix the sorting bug
+//! Derived from QTreeWidgetItem class with customized sort
 class WUTTreeWidgetItem : public QTreeWidgetItem
 {
 public:

@@ -20,6 +20,10 @@ SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
 ########### Project name ###########
 PROJECT(Stellarium C CXX)
+
+SET(STELLARIUM_RELEASE_BUILD 0 CACHE BOOL "Set 1 to build as an official release (0 for development snapshots).")
+SET(STELLARIUM_RELEASE_NUMBER 1)
+
 ########### Detect Qt version
 SET(ENABLE_QT6 1 CACHE BOOL "Whether to try building with Qt6. If Qt6 is not found, Qt5 will be used.")
 IF(ENABLE_QT6)
@@ -32,28 +36,35 @@ ENDIF()
 # Activate this to error on all things deprecated in 5.15
 #add_compile_definitions("QT_DISABLE_DEPRECATED_BEFORE=0x050F00")
 
-# If Qt6, set series number to 1.
-IF(Qt6_FOUND)
-     SET(STELLARIUM_MAJOR 1)
+# two last digits of the current year
+STRING(TIMESTAMP SHORTYEAR "%y")
+MATH(EXPR STELLARIUM_MAJOR_DIGIT "${SHORTYEAR} + 0" OUTPUT_FORMAT DECIMAL)
+# Version of Stellarium has format YY.V.YD, where:
+# -- YY (MAJOR) - two last digits of the year of release
+# -- V  (MINOR) - version of the release (0 is used before first release)
+# -- YD (PATCH) - 0 for releases and the day of the current year for snapshots
+# Example: first release in year 2023 has version 23.1.0 and short (public) version 23.1, series 23.0
+# Note: Use integer versions instead of strings for easier handling if required
+SET(STELLARIUM_MAJOR ${STELLARIUM_MAJOR_DIGIT})
+SET(STELLARIUM_MINOR ${STELLARIUM_RELEASE_NUMBER})
+IF(STELLARIUM_RELEASE_BUILD)
+    ADD_DEFINITIONS(-DSTELLARIUM_RELEASE_BUILD)
+    SET(STELLARIUM_PATCH 0)
 ELSE()
-     SET(STELLARIUM_MAJOR 0)
+    ########### Get revision number for non-release builds ###########
+    STRING(TIMESTAMP CDNUMBER "%j")
+    MATH(EXPR STELLARIUM_PATCH_DIGIT "${CDNUMBER} + 0" OUTPUT_FORMAT DECIMAL)
+    SET(STELLARIUM_PATCH ${STELLARIUM_PATCH_DIGIT})
 ENDIF()
 # Use integer versions instead of strings for easier handling if required
-SET(STELLARIUM_MINOR 22)
-SET(STELLARIUM_PATCH 5)
 ADD_DEFINITIONS(
      -DSTELLARIUM_MAJOR=${STELLARIUM_MAJOR}
      -DSTELLARIUM_MINOR=${STELLARIUM_MINOR}
      -DSTELLARIUM_PATCH=${STELLARIUM_PATCH}
 )
 SET(VERSION "${STELLARIUM_MAJOR}.${STELLARIUM_MINOR}.${STELLARIUM_PATCH}")
-# Public version has format YY.V, where:
-# -- YY - two last digits of the year of release
-# -- V  - version of the release
-# Example: first release in year 2023 has version 1.23.0 and public version 23.1
-MATH(EXPR STELLARIUM_V "${STELLARIUM_PATCH} + 1" OUTPUT_FORMAT DECIMAL)
-#SET(STELLARIUM_PUBLIC_VERSION "${STELLARIUM_MINOR}.${STELLARIUM_V}")
-SET(STELLARIUM_PUBLIC_VERSION "1.2")
+SET(STELLARIUM_SERIES "${STELLARIUM_MAJOR}.0")
+SET(STELLARIUM_PUBLIC_VERSION "${STELLARIUM_MAJOR}.${STELLARIUM_MINOR}")
 SET(PACKAGE stellarium)
 STRING(TIMESTAMP CURRENTYEAR "%Y")
 SET(COPYRIGHT_YEARS "2000-${CURRENTYEAR}")
@@ -76,6 +87,7 @@ ADD_DEFINITIONS(-DPACKAGE_VERSION="${PACKAGE_VERSION}")
 ADD_DEFINITIONS(-DCOPYRIGHT_YEARS="${COPYRIGHT_YEARS}")
 ADD_DEFINITIONS(-DSTELLARIUM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 ADD_DEFINITIONS(-DSTELLARIUM_PUBLIC_VERSION="${STELLARIUM_PUBLIC_VERSION}")
+ADD_DEFINITIONS(-DSTELLARIUM_SERIES="${STELLARIUM_SERIES}")
 
 # Qt 5.15+ is preferred as it provides version-less CMake functions (QT_WRAP_UI etc.)
 IF(Qt6_FOUND)
@@ -140,19 +152,11 @@ IF(${CMAKE_BUILD_TYPE} MATCHES "Debug")
      ENDIF()
 ENDIF()
 
-SET(STELLARIUM_RELEASE_BUILD 0 CACHE BOOL "Set 1 to build as an official release (0 for development snapshots).")
 IF(STELLARIUM_RELEASE_BUILD)
-     ADD_DEFINITIONS(-DSTELLARIUM_RELEASE_BUILD)
-     SET(SERIES "${STELLARIUM_MINOR}.x")
-     SET(WINDOWS_PACKAGE_VERSION "${VERSION}.0")
      SET(ISS_PACKAGE_VERSION "${STELLARIUM_PUBLIC_VERSION}")
-     SET(STELLARIUM_BUNDLE_VERSION "${STELLARIUM_PUBLIC_VERSION}")
      SET(STELLARIUM_BUIDING_VERSION "${STELLARIUM_PUBLIC_VERSION}")
 ELSE()
-     SET(SERIES "head")
-     ########### Get revision number for non-release builds ###########
-     STRING(TIMESTAMP CDNUMBER "%j")
-     SET(WINDOWS_PACKAGE_VERSION "${VERSION}.${CDNUMBER}")
+     SET(STELLARIUM_SERIES "head")
      FIND_PACKAGE(Git QUIET)
      IF(Git_FOUND)
           MESSAGE(STATUS "Found Git ${GIT_VERSION_STRING}")
@@ -162,39 +166,20 @@ ELSE()
           EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} log -1 --pretty=format:%h WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} TIMEOUT 30 OUTPUT_VARIABLE GIT_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_VARIABLE GIT_ERROR)
           # get the name of latest annotated tag
           EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} TIMEOUT 30 OUTPUT_VARIABLE GIT_TAGS OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_VARIABLE GIT_ERROR)
-          # get the count of commits between latest release (we use tags for releases) and current HEAD
-          IF(WIN32)
-               EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} log ${GIT_TAGS}..HEAD --pretty=oneline COMMAND find /c /v "" WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} TIMEOUT 30 OUTPUT_VARIABLE GIT_COMMITS OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_VARIABLE GIT_ERROR)
-          ELSE()
-               EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} log ${GIT_TAGS}..HEAD --pretty=oneline COMMAND wc -l WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} TIMEOUT 30 OUTPUT_VARIABLE GIT_COMMITS OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_VARIABLE GIT_ERROR)
-          ENDIF()
-          # remove all whitespaces
-          STRING(REPLACE " " "" GIT_COMMITS "${GIT_COMMITS}")
-          IF(GIT_REVISION)
+	  IF(GIT_REVISION)
                # Let's use short hash in all cases
-               STRING(SUBSTRING ${GIT_REVISION} 0 7 REVISION)
-               SET(PACKAGE_VERSION "${VERSION}-${REVISION}")
-	       SET(ISS_PACKAGE_VERSION "${STELLARIUM_PUBLIC_VERSION}-${REVISION}")
-               ADD_DEFINITIONS(-DGIT_REVISION="${REVISION}")
+               STRING(SUBSTRING ${GIT_REVISION} 0 7 REVISION)               
+	       ADD_DEFINITIONS(-DGIT_REVISION="${REVISION}")
                ADD_DEFINITIONS(-DGIT_BRANCH="${GIT_BRANCH}")
-               # check to use --depth param...
-               IF(${GIT_COMMITS} EQUAL 0)
-                    # Append the day of the current year to the number 1 as string
-                    # because we never reaches 1000 commits per 1/4 year
-                    STRING(TIMESTAMP GIT_COMMITS "1%j")
-               ENDIF()
-               # better way to numbering
-	       SET(WINDOWS_PACKAGE_VERSION "${VERSION}.${GIT_COMMITS}")
-          ENDIF()
+	  ENDIF()
      ELSE()
           STRING(TIMESTAMP TODAY "%j%H%M")
-	  SET(PACKAGE_VERSION "${VERSION}-${TODAY}")
-	  SET(ISS_PACKAGE_VERSION "${STELLARIUM_PUBLIC_VERSION}-${TODAY}")
-          ADD_DEFINITIONS(-DGIT_REVISION="${TODAY}")
+          SET(REVISION "${TODAY}")
+	  ADD_DEFINITIONS(-DGIT_REVISION="${TODAY}")
           ADD_DEFINITIONS(-DGIT_BRANCH="tarball")
      ENDIF()
+     SET(ISS_PACKAGE_VERSION "${STELLARIUM_PUBLIC_VERSION}-${REVISION}")
      SET(STELLARIUM_BUIDING_VERSION "${STELLARIUM_PUBLIC_VERSION}+")
-     SET(STELLARIUM_BUNDLE_VERSION "${STELLARIUM_PUBLIC_VERSION}+")
 ENDIF()
 MESSAGE(STATUS "Building ${PROJECT_NAME} ${STELLARIUM_BUIDING_VERSION} (v${PACKAGE_VERSION}; Mode: ${CMAKE_BUILD_TYPE})")
 
@@ -614,27 +599,34 @@ IF(WIN32)
                SET(ISS_OPENSSL_LIBS "; OpenSSL libraries not found")
           ENDIF()
      ELSE()
-          # Try found OpenSSL 1.1.x DLL's on Windows (newest Qt)
-          IF("${CMAKE_SIZEOF_VOID_P}" EQUAL "4")
-               FIND_FILE(OPENSSL_SSL_LIBRARY_DLL libssl-1_1.dll)
-               FIND_FILE(OPENSSL_CRYPTO_LIBRARY_DLL libcrypto-1_1.dll)
-          ELSEIF("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-               FIND_FILE(OPENSSL_SSL_LIBRARY_DLL libssl-1_1-x64.dll)
-               FIND_FILE(OPENSSL_CRYPTO_LIBRARY_DLL libcrypto-1_1-x64.dll)
+          SET(OPENSSL_LIBRARY_ARCH "")
+          IF("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+              SET(OPENSSL_LIBRARY_ARCH "-x64")
           ENDIF()
+          # Try found OpenSSL 3.x DLL's on Windows (newest Qt)
+          FIND_FILE(OPENSSL_SSL_LIBRARY_DLL libssl-3${OPENSSL_LIBRARY_ARCH}.dll)
+          FIND_FILE(OPENSSL_CRYPTO_LIBRARY_DLL libcrypto-3${OPENSSL_LIBRARY_ARCH}.dll)
+          # OK, OpenSSL 3.x is not exist, let's try found OpenSSL 1.1.x DLL's
+          IF(NOT EXISTS ${OPENSSL_SSL_LIBRARY_DLL})
+             FIND_FILE(OPENSSL_SSL_LIBRARY_DLL libssl-1_1${OPENSSL_LIBRARY_ARCH}.dll)
+          ENDIF()
+          IF(NOT EXISTS ${OPENSSL_CRYPTO_LIBRARY_DLL})
+             FIND_FILE(OPENSSL_CRYPTO_LIBRARY_DLL libcrypto-1_1${OPENSSL_LIBRARY_ARCH}.dll)
+          ENDIF()
+
           SET(ISS_OPENSSL_LIBS "; OpenSSL support")
           IF(EXISTS ${OPENSSL_SSL_LIBRARY_DLL})
-               MESSAGE(STATUS "Found OpenSSL SSL library: ${OPENSSL_SSL_LIBRARY_DLL}")
-               SET(ISS_OPENSSL_LIBS "${ISS_OPENSSL_LIBS}\nSource: \"${OPENSSL_SSL_LIBRARY_DLL}\"; DestDir: \"{app}\"; Flags: ignoreversion")
+             MESSAGE(STATUS "Found OpenSSL SSL library: ${OPENSSL_SSL_LIBRARY_DLL}")
+             SET(ISS_OPENSSL_LIBS "${ISS_OPENSSL_LIBS}\nSource: \"${OPENSSL_SSL_LIBRARY_DLL}\"; DestDir: \"{app}\"; Flags: ignoreversion")
           ENDIF()
           IF(EXISTS ${OPENSSL_CRYPTO_LIBRARY_DLL})
-               MESSAGE(STATUS "Found OpenSSL crypto library: ${OPENSSL_CRYPTO_LIBRARY_DLL}")
-               SET(ISS_OPENSSL_LIBS "${ISS_OPENSSL_LIBS}\nSource: \"${OPENSSL_CRYPTO_LIBRARY_DLL}\"; DestDir: \"{app}\"; Flags: ignoreversion")
+             MESSAGE(STATUS "Found OpenSSL crypto library: ${OPENSSL_CRYPTO_LIBRARY_DLL}")
+             SET(ISS_OPENSSL_LIBS "${ISS_OPENSSL_LIBS}\nSource: \"${OPENSSL_CRYPTO_LIBRARY_DLL}\"; DestDir: \"{app}\"; Flags: ignoreversion")
           ENDIF()
           IF((NOT EXISTS ${OPENSSL_SSL_LIBRARY_DLL}) AND (NOT EXISTS ${OPENSSL_CRYPTO_LIBRARY_DLL}))
-               SET(ISS_OPENSSL_LIBS "; OpenSSL libraries not found")
+             SET(ISS_OPENSSL_LIBS "; OpenSSL libraries not found")
           ENDIF()
-    ENDIF()
+     ENDIF()
 ENDIF()
 
 IF(APPLE)
@@ -697,8 +689,8 @@ SET(CMAKE_INCLUDE_CURRENT_DIR ON)
 IF(ENABLE_SHOWMYSKY)
     ADD_DEFINITIONS(-DENABLE_SHOWMYSKY)
     CPMFindPackage(NAME ShowMySky-Qt${QT_VERSION_MAJOR}
-        URL https://github.com/10110111/CalcMySky/archive/0fb93ef8e602c463f167f7727d4d80382033caca.tar.gz
-        URL_HASH SHA256=a4507529a6533545a505a226a68c8d770e99a62cb354ec8292b558898b0afe96
+		URL https://github.com/10110111/CalcMySky/archive/refs/tags/v0.3.0.tar.gz
+        URL_HASH SHA256=f5ea2d3981de0d3e93a0d12b12bea9e9cfcf51b62336740be641f4ba74f98bdd
         EXCLUDE_FROM_ALL yes
         OPTIONS "QT_VERSION ${QT_VERSION_MAJOR}")
     IF(ShowMySky-Qt${QT_VERSION_MAJOR}_ADDED)
@@ -870,11 +862,8 @@ IF(WIN32)
      ### Generate a VersionInfo file
      #######################################################
 
-     IF(STELLARIUM_RELEASE_BUILD)
-	  SET(PACKAGE_VERSION_RC "${PACKAGE_VERSION},0")
-     ELSE()
-          SET(PACKAGE_VERSION_RC "${WINDOWS_PACKAGE_VERSION}")
-     ENDIF()
+     SET(WINDOWS_PACKAGE_VERSION "${VERSION}.0")
+     SET(PACKAGE_VERSION_RC "${WINDOWS_PACKAGE_VERSION}")
      STRING(REGEX REPLACE "([.]+)" "," PACKAGE_VERSION_RC ${PACKAGE_VERSION_RC})
      CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/cmake/stellarium.rc.cmake ${CMAKE_CURRENT_BINARY_DIR}/stellarium.rc @ONLY)
 
@@ -899,10 +888,10 @@ IF(WIN32)
      #######################################################
 
      IF("${CMAKE_SIZEOF_VOID_P}" EQUAL "4")
-          SET(ISS_ARCHITECTURE_SPECIFIC ";In the 64-bit only version, this line switches the installer to 64-bit mode.")
+	  SET(ISS_ARCHITECTURE_SPECIFIC "")
 	  SET(ISS_PACKAGE_PLATFORM "qt${QT_VERSION_MAJOR}-win32")
      ELSEIF("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-          SET(ISS_ARCHITECTURE_SPECIFIC ";Make the installer run only on win64:\nArchitecturesAllowed=x64\n;Switch to 64-bit install mode:\nArchitecturesInstallIn64BitMode=x64")
+	  SET(ISS_ARCHITECTURE_SPECIFIC ";Switch to 64-bit install mode:\nArchitecturesInstallIn64BitMode=x64")
 	  SET(ISS_PACKAGE_PLATFORM "qt${QT_VERSION_MAJOR}-win64")
      ENDIF()
      SET(ISS_AUTOGENERATED_WARNING "Do not edit this file! It has been automatically generated by CMake. Your changes will be lost the next time CMake is run.")
@@ -964,7 +953,11 @@ IF(GENERATE_PACKAGE_TARGET)
      SET(CPACK_PACKAGE_VERSION_MINOR "${STELLARIUM_MINOR}")
      SET(CPACK_PACKAGE_VERSION_PATCH "${STELLARIUM_PATCH}")
      SET(CPACK_PACKAGE_INSTALL_DIRECTORY "stellarium")
-     SET(CPACK_SOURCE_PACKAGE_FILE_NAME "stellarium-${STELLARIUM_PUBLIC_VERSION}")
+     IF(STELLARIUM_RELEASE_BUILD)
+	  SET(CPACK_SOURCE_PACKAGE_FILE_NAME "stellarium-${STELLARIUM_PUBLIC_VERSION}")
+     ELSE()
+	  SET(CPACK_SOURCE_PACKAGE_FILE_NAME "stellarium-${STELLARIUM_PUBLIC_VERSION}-${GIT_REVISION}")
+     ENDIF()
      SET(CPACK_SOURCE_GENERATOR "TBZ2;TXZ;TGZ")
      SET(CPACK_GENERATOR "TBZ2;TXZ;TGZ")
      SET(CPACK_PACKAGE_CHECKSUM "SHA256")

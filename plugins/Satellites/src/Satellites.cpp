@@ -834,7 +834,9 @@ void Satellites::loadSettings()
 
 	// umbra/penumbra
 	setFlagUmbraVisible(conf->value("umbra_flag", false).toBool());
-	setFlagUmbraAtFixedDistance(conf->value("umbra_fixed_distance_flag", false).toBool());
+	// FIXME: Repair the functionality!
+	setFlagUmbraAtFixedDistance(false);
+	//setFlagUmbraAtFixedDistance(conf->value("umbra_fixed_distance_flag", false).toBool());
 	setUmbraColor(Vec3f(conf->value("umbra_color", "1.0,0.0,0.0").toString()));
 	setUmbraDistance(conf->value("umbra_fixed_distance", 1000.0).toDouble());
 	setFlagPenumbraVisible(conf->value("penumbra_flag", false).toBool());
@@ -928,7 +930,9 @@ void Satellites::saveSettingsToConfig()
 
 	// umbra/penumbra
 	conf->setValue("umbra_flag", getFlagUmbraVisible());
-	conf->setValue("umbra_fixed_distance_flag", getFlagUmbraAtFixedDistance());
+	// FIXME: Fix and re-enable this function
+	//conf->setValue("umbra_fixed_distance_flag", getFlagUmbraAtFixedDistance());
+	conf->setValue("umbra_fixed_distance_flag", false); // Preliminary
 	conf->setValue("umbra_color", getUmbraColor().toStr());
 	conf->setValue("umbra_fixed_distance", getUmbraDistance());
 	conf->setValue("penumbra_flag", getFlagPenumbraVisible());
@@ -1672,7 +1676,7 @@ QStringList Satellites::guessGroups(const TleData& tleData)
 
 		// add "supergroups", based on CelesTrak's groups
 		QStringList superGroup = satSuperGroupsMap.values(groupName);
-		if (superGroup.size()>0)
+		if (!superGroup.isEmpty())
 		{
 			for (int i=0; i<superGroup.size(); i++)
 			{
@@ -1896,12 +1900,16 @@ void Satellites::setFlagUmbraVisible(bool b)
 
 void Satellites::setFlagUmbraAtFixedDistance(bool b)
 {
-	if (flagUmbraAtFixedDistance != b)
-	{
-		flagUmbraAtFixedDistance = b;
-		emit settingsChanged(); // GZ IS THIS REQUIRED/USEFUL??
-		emit flagUmbraAtFixedDistanceChanged(b);
-	}
+	flagUmbraAtFixedDistance = false;
+	qDebug() << "setFlagUmbraAtFixedDistance() currently not possible";
+
+	// TO BE FIXED
+	//if (flagUmbraAtFixedDistance != b)
+	//{
+	//	flagUmbraAtFixedDistance = b;
+	//	emit settingsChanged(); // GZ IS THIS REQUIRED/USEFUL??
+	//	emit flagUmbraAtFixedDistanceChanged(b);
+	//}
 }
 
 void Satellites::setUmbraColor(const Vec3f &c)
@@ -2384,7 +2392,7 @@ void Satellites::saveDownloadedUpdate(QNetworkReply* reply)
 		}
 	}
 	updateSources.clear();
-	if (newData.size()>0)
+	if (!newData.isEmpty())
 		updateSatellites(newData);
 	else
 		emit updateStateChanged(OtherError);
@@ -2677,7 +2685,7 @@ QString Satellites::getSatIdFromLine2(const QString& line)
 	if (!id.isEmpty())
 	{
 		// Strip any leading zeros as they should be unique ints as strings.
-		static const QRegularExpression re("^[0]*");
+		static const QRegularExpression re("^[0]*\\B");
 		id.remove(re);
 	}
 	return id;
@@ -3099,7 +3107,7 @@ IridiumFlaresPredictionList Satellites::getIridiumFlaresPrediction()
 		nextJD = predictionJD + 1./24;
 		pcore->setJD(predictionJD);
 
-		ssystem->getEarth()->computePosition(predictionJD);
+		ssystem->getEarth()->computePosition(predictionJD, Vec3d(0.));
 		pcore->update(0);
 
 		for (auto i = iridiums.begin(); i != iridiums.end(); ++i)

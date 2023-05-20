@@ -257,6 +257,9 @@ void viewportEdgeIntersectCallback(const Vec3d& screenPos, const Vec3d& directio
 	const bool useOldAzimuth = StelApp::getInstance().getFlagSouthAzimuthUsage();
 	const float ppx = static_cast<float>(d->sPainter->getProjector()->getDevicePixelsPerPixel());
 
+	const int viewportWidth  = d->sPainter->getProjector()->getViewportWidth();
+	const int viewportHeight = d->sPainter->getProjector()->getViewportHeight();
+
 	QString text;
 	if (d->text.isEmpty())
 	{
@@ -370,10 +373,27 @@ void viewportEdgeIntersectCallback(const Vec3d& screenPos, const Vec3d& directio
 		angleDeg+=180.f;
 		xshift=-(static_cast<float>(d->sPainter->getFontMetrics().boundingRect(text).width()) + xshift*ppx);
 	}
+	// DEBUG INFO ONLY!
+	//text=QString(" <:%1°").arg(QString::number(angleDeg, 'f', 2));
+	//text.append(QString(" <:%1° %2/%3 (%4x%5)").arg(QString::number(angleDeg, 'f', 2), QString::number(screenPos[0], 'f', 2), QString::number(screenPos[1], 'f', 2),
+	//		QString::number(viewportWidth),	QString::number(viewportHeight)));
+	if ((fabs(screenPos[0])<1.) && (angleDeg>0.f )) // LEFT
+	{
+		xshift+=0.5f*tan(angleDeg*M_PI_180f)*d->sPainter->getFontMetrics().boundingRect(text).height();
+	}
+	else if ((fabs(screenPos[0]-viewportWidth)<1.) && (angleDeg>180.f )) // RIGHT
+	{
+		xshift += 0.5 * tan(angleDeg*M_PI_180f)*d->sPainter->getFontMetrics().boundingRect(text).height();
+	}
+	else if ((fabs(screenPos[1]-viewportHeight)<1.) && fabs(angleDeg)>5.f) // TOP
+	{
+		const float sign = angleDeg<-90.f ? 0.5f : -0.5f;
+		xshift += sign * (1./tan(angleDeg*M_PI_180f))*d->sPainter->getFontMetrics().boundingRect(text).height();
+	}
+	// It seems bottom edge is always OK!
 
 	d->sPainter->drawText(static_cast<float>(screenPos[0]), static_cast<float>(screenPos[1]), text, angleDeg, xshift*ppx, yshift*ppx);
 	d->sPainter->setColor(tmpColor);
-	d->sPainter->setBlending(true);
 }
 
 //! Draw the sky grid in the current frame
@@ -1218,7 +1238,7 @@ void SkyLine::draw(StelCore *core) const
 				const QString &label=it.value();
 				// draw and labels: derive the irregular tick lengths from labeling
 				Vec3d start=fpt;
-				Vec3d end= (label.length()>0) ? part10 : part1;
+				Vec3d end= label.isEmpty() ? part1 : part10;
 				if (label.contains("5"))
 					end=part5;
 				Vec3d end10=part10;
@@ -1230,7 +1250,7 @@ void SkyLine::draw(StelCore *core) const
 
 				sPainter.drawGreatCircleArc(start, end, Q_NULLPTR, Q_NULLPTR, Q_NULLPTR);
 
-				if (label.length()>0 && (
+				if (!label.isEmpty() && (
 					currentFoV<60. // all labels
 					|| (currentFoV<=180. && !label.contains("5")) // 1.MM/10.MM/20.MM
 					|| label.startsWith("1.") // in any case

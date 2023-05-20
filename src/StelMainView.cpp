@@ -33,6 +33,7 @@
 #include "StelOpenGL.hpp"
 #include "StelOpenGLArray.hpp"
 #include "StelProjector.hpp"
+#include "TextureAverageComputer.hpp"
 
 #include <QDebug>
 #include <QDir>
@@ -61,6 +62,7 @@
 #include <QWindow>
 #include <QMessageBox>
 #include <QStandardPaths>
+#include <QStorageInfo>
 #ifdef Q_OS_WIN
 	#include <QPinchGesture>
 #endif
@@ -775,18 +777,22 @@ QSurfaceFormat StelMainView::getDesiredGLFormat(QSettings* configuration)
 
 	//if on an GLES build, do not set the format
 	const auto openGLModuleType = QOpenGLContext::openGLModuleType();
-	qDebug() << "OpenGL module type:" << openGLModuleType;
+	qDebug() << "OpenGL module type:" << (openGLModuleType==QOpenGLContext::LibGL
+										  ? "desktop OpenGL"
+										  : openGLModuleType==QOpenGLContext::LibGL
+											? "OpenGL ES 2 or higher"
+											: std::to_string(openGLModuleType).c_str());
 	if (openGLModuleType==QOpenGLContext::LibGL)
 	{
 		fmt.setRenderableType(QSurfaceFormat::OpenGL);
-		fmt.setMajorVersion(3);
-		fmt.setMinorVersion(3);
+		fmt.setVersion(3, 3);
 		fmt.setProfile(QSurfaceFormat::CoreProfile);
 
 		if (qApp && qApp->property("onetime_opengl_compat").toBool())
 		{
 			qDebug() << "Setting OpenGL Compatibility profile from command line...";
 			fmt.setProfile(QSurfaceFormat::CompatibilityProfile);
+			fmt.setOption(QSurfaceFormat::DeprecatedFunctions);
 		}
 		// FIXME: temporary hook for Qt5-based macOS bundles
 		#if defined(Q_OS_MACOS) && (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
@@ -818,7 +824,7 @@ QSurfaceFormat StelMainView::getDesiredGLFormat(QSettings* configuration)
 #else
 	const bool vsdef = true;
 #endif
-	if (configuration->value("video/vsync", vsdef).toBool())
+	if (configuration && configuration->value("video/vsync", vsdef).toBool())
 		fmt.setSwapInterval(1);
 	else
 		fmt.setSwapInterval(0);
@@ -948,7 +954,7 @@ void StelMainView::init()
 	rootItem->setGraphicsEffect(nightModeEffect);
 
 	flagInvertScreenShotColors = configuration->value("main/invert_screenshots_colors", false).toBool();
-	screenShotFormat = configuration->value("main/screenshot_format", "png").toString();
+	setScreenshotFormat(configuration->value("main/screenshot_format", "png").toString()); // includes check for supported formats.
 	flagScreenshotDateFileName=configuration->value("main/screenshot_datetime_filename", false).toBool();
 	screenShotFileMask = configuration->value("main/screenshot_datetime_filemask", "yyyyMMdd-hhmmssz").toString();
 	flagUseCustomScreenshotSize=configuration->value("main/screenshot_custom_size", false).toBool();
@@ -1616,7 +1622,9 @@ void StelMainView::setScreenshotDpi(int dpi)
 
 void StelMainView::saveScreenShot(const QString& filePrefix, const QString& saveDir, const bool overwrite)
 {
-	screenShotPrefix = filePrefix;
+	screenShotPrefix = QFileInfo(filePrefix).fileName(); // Strip away any path elements (Security issue!)
+	if (screenShotPrefix.isEmpty())
+			screenShotPrefix = "stellarium-";
 	screenShotDir = saveDir;
 	flagOverwriteScreenshots=overwrite;
 	emit screenshotRequested();
@@ -1631,9 +1639,9 @@ void StelMainView::doScreenshot(void)
 	// HiDPI screens interfere, and the viewing angle has to be maintained.
 	// First, image size:
 	glWidget->makeCurrent();
-	float pixelRatio = static_cast<float>(QOpenGLContext::currentContext()->screen()->devicePixelRatio());
-	int imgWidth =static_cast<int>(stelScene->width());
-	int imgHeight=static_cast<int>(stelScene->height());
+	const auto pixelRatio = QOpenGLContext::currentContext()->screen()->devicePixelRatio();
+	int physImgWidth  = std::lround(stelScene->width() * pixelRatio);
+	int physImgHeight = std::lround(stelScene->height() * pixelRatio);
 	bool nightModeWasEnabled=nightModeEffect->isEnabled();
 	nightModeEffect->setEnabled(false);
 	if (flagUseCustomScreenshotSize)
@@ -1672,8 +1680,8 @@ void StelMainView::doScreenshot(void)
 			int maximumFramebufferSize = qMin(texSize,qMin(rbSize,qMin(viewportSize[0],viewportSize[1])));
 			qCDebug(mainview)<<"Maximum framebuffer size:"<<maximumFramebufferSize;
 
-			imgWidth =qMin(maximumFramebufferSize, customScreenshotWidth);
-			imgHeight=qMin(maximumFramebufferSize, customScreenshotHeight);
+			physImgWidth =qMin(maximumFramebufferSize, customScreenshotWidth);
+			physImgHeight=qMin(maximumFramebufferSize, customScreenshotHeight);
 		}
 		else
 		{
@@ -1689,41 +1697,44 @@ void StelMainView::doScreenshot(void)
 	fbFormat.setInternalTextureFormat(isGLES ? GL_RGBA : GL_RGB); // try to avoid transparent background!
 	if(const auto multisamplingLevel = configuration->value("video/multisampling", 0).toInt())
         fbFormat.setSamples(multisamplingLevel);
-	QOpenGLFramebufferObject * fbObj = new QOpenGLFramebufferObject(static_cast<int>(static_cast<float>(imgWidth) * pixelRatio), static_cast<int>(static_cast<float>(imgHeight) * pixelRatio), fbFormat);
+	QOpenGLFramebufferObject * fbObj = new QOpenGLFramebufferObject(physImgWidth, physImgHeight, fbFormat);
 	fbObj->bind();
 	// Now the painter has to be convinced to paint to the potentially larger image frame.
-	QOpenGLPaintDevice fbObjPaintDev(static_cast<int>(static_cast<float>(imgWidth) * pixelRatio), static_cast<int>(static_cast<float>(imgHeight) * pixelRatio));
+	QOpenGLPaintDevice fbObjPaintDev(physImgWidth, physImgHeight);
 
 	// It seems the projector has its own knowledge about image size. We must adjust fov and image size, but reset afterwards.
 	StelCore *core=StelApp::getInstance().getCore();
 	StelProjector::StelProjectorParams pParams=core->getCurrentStelProjectorParams();
 	StelProjector::StelProjectorParams sParams=pParams;
 	//qCDebug(mainview) << "Screenshot Viewport: x" << pParams.viewportXywh[0] << "/y" << pParams.viewportXywh[1] << "/w" << pParams.viewportXywh[2] << "/h" << pParams.viewportXywh[3];
-	sParams.viewportXywh[2]=imgWidth;
-	sParams.viewportXywh[3]=imgHeight;
+	const auto virtImgWidth  = physImgWidth  / pixelRatio;
+	const auto virtImgHeight = physImgHeight / pixelRatio;
+	sParams.viewportXywh[2] = virtImgWidth;
+	sParams.viewportXywh[3] = virtImgHeight;
 
 	// Configure a helper value to allow some modules to tweak their output sizes. Currently used by StarMgr, maybe solve font issues?
 #if (QT_VERSION>=QT_VERSION_CHECK(5,12,0))
-	customScreenshotMagnification=static_cast<float>(imgHeight)/static_cast<float>(qApp->screenAt(QPoint(stelScene->width()*0.5, stelScene->height()*0.5))->geometry().height());
+	customScreenshotMagnification=static_cast<float>(virtImgHeight)/static_cast<float>(qApp->screenAt(QPoint(stelScene->width()*0.5, stelScene->height()*0.5))->geometry().height());
 #else
-	customScreenshotMagnification=static_cast<float>(imgHeight)/static_cast<float>(qApp->screens().at(qApp->desktop()->screenNumber())->geometry().height());
+	customScreenshotMagnification=static_cast<float>(virtImgHeight)/static_cast<float>(qApp->screens().at(qApp->desktop()->screenNumber())->geometry().height());
 #endif
-	sParams.viewportCenter.set(0.0+(0.5+pParams.viewportCenterOffset.v[0])*imgWidth, 0.0+(0.5+pParams.viewportCenterOffset.v[1])*imgHeight);
-	sParams.viewportFovDiameter = qMin(imgWidth,imgHeight);
+	sParams.viewportCenter.set(0.0+(0.5+pParams.viewportCenterOffset.v[0])*virtImgWidth,
+							   0.0+(0.5+pParams.viewportCenterOffset.v[1])*virtImgHeight);
+	sParams.viewportFovDiameter = qMin(virtImgWidth,virtImgHeight);
 	core->setCurrentStelProjectorParams(sParams);
 
 	QPainter painter;
 	painter.begin(&fbObjPaintDev);
 	// next line was above begin(), but caused a complaint. Maybe use after begin()?
 	painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
-	stelScene->setSceneRect(0, 0, imgWidth, imgHeight);
+	stelScene->setSceneRect(0, 0, virtImgWidth, virtImgHeight);
 
 	// push the button bars back to the sides where they belong, and fix root item clipping its children.
-	dynamic_cast<StelGui*>(gui)->getSkyGui()->setGeometry(0, 0, imgWidth, imgHeight);
-	rootItem->setSize(QSize(imgWidth, imgHeight));
+	dynamic_cast<StelGui*>(gui)->getSkyGui()->setGeometry(0, 0, virtImgWidth, virtImgHeight);
+	rootItem->setSize(QSize(virtImgWidth, virtImgHeight));
 	dynamic_cast<StelGui*>(gui)->forceRefreshGui(); // refresh bar position.
 
-	stelScene->render(&painter, QRectF(), QRectF(0,0,imgWidth,imgHeight) , Qt::KeepAspectRatio);
+	stelScene->render(&painter, QRectF(), QRectF(0,0,virtImgWidth,virtImgHeight) , Qt::KeepAspectRatio);
 	painter.end();
 
 	QImage im;
@@ -1858,11 +1869,23 @@ void StelMainView::doScreenshot(void)
 			}
 		}
 	}
+	/*
+	// OPTIONAL: Determine free space and reject storing. This should avoid filling user space.
+	QStorageInfo storageInfo(shotPath.filePath());
+	if (storageInfo.bytesAvailable() < 50*1024*1024)
+	{
+		qWarning() << "WARNING: Less than 50MB free. Not storing screenshot to" << shotPath.filePath();
+		qWarning() << "         You must clean up your system to free disk space!";
+		return;
+	}
+	*/
 
 	// Set preferred image resolution (for some printing workflows)
 	im.setDotsPerMeterX(qRound(screenshotDpi*100./2.54));
 	im.setDotsPerMeterY(qRound(screenshotDpi*100./2.54));
 	qDebug() << "INFO Saving screenshot in file: " << QDir::toNativeSeparators(shotPath.filePath());
+
+
 	QImageWriter imageWriter(shotPath.filePath());
 	if (screenShotFormat=="tif")
 		imageWriter.setCompression(1); // use LZW

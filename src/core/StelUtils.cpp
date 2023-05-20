@@ -49,7 +49,7 @@ QString getApplicationName()
 #endif
 }
 
-//! Return the version of stellarium, e.g. "0.23.1"
+//! Return the version of stellarium, e.g. "23.1.0"
 QString getApplicationVersion()
 {
 #if defined(GIT_REVISION)
@@ -63,6 +63,12 @@ QString getApplicationVersion()
 QString getApplicationPublicVersion()
 {
 	return QString(STELLARIUM_PUBLIC_VERSION);
+}
+
+//! Return the series of stellarium, e.g. "23.0"
+QString getApplicationSeries()
+{
+	return QString(STELLARIUM_SERIES);
 }
 
 QString getUserAgentString()
@@ -648,13 +654,23 @@ double getDecAngle(const QString& str)
 	return -0.0;
 }
 
-// Return the first power of two bigger than the given value
 int getBiggerPowerOfTwo(int value)
 {
 	int p=1;
 	while (p<value)
 		p<<=1;
 	return p;
+}
+
+// Return the first power of two smaller than or equal to the given value
+int getSmallerPowerOfTwo(const int value)
+{
+	if (value==0) return 1;
+	const auto bigger = getBiggerPowerOfTwo(value);
+	// Leave exact power of two unchanged
+	if (bigger == value) return value;
+
+	return bigger >> 1;
 }
 
 /*************************************************************************
@@ -2581,6 +2597,8 @@ float* ComputeCosSinRho(const unsigned int segments)
 //! @param minAngle start angle inside the half-circle. maxAngle=minAngle+segments*phi
 float *ComputeCosSinRhoZone(const float dRho, const unsigned int segments, const float minAngle)
 {
+	Q_ASSERT(segments<=MAX_STACKS);
+
 	float *cos_sin = cos_sin_rho;
 	const float c = cosf(dRho);
 	const float s = sinf(dRho);

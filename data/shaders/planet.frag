@@ -167,22 +167,6 @@ lowp float outgasFactor(in mediump vec3 normal, in highp vec3 lightDir, in mediu
     return opac;
 }
 
-vec3 srgbToLinear(vec3 srgb)
-{
-	vec3 s = step(vec3(0.04045), srgb);
-	vec3 d = vec3(1) - s;
-	return s * pow((srgb+0.055)/1.055, vec3(2.4)) +
-		   d * srgb/12.92;
-}
-
-vec3 linearToSRGB(vec3 lin)
-{
-	vec3 s = step(vec3(0.0031308), lin);
-	vec3 d = vec3(1) - s;
-	return s * (1.055*pow(lin, vec3(1./2.4))-0.055) +
-		   d *  12.92*lin;
-}
-
 void main()
 {
 #ifndef IS_MOON
@@ -414,20 +398,7 @@ void main()
         texColor = texture2D(tex, texc);
     }
 
-#ifdef IS_MOON
-	// In the original NASA CGI Moon Kit the following description is given
-	// about the color texture:
-	//  * A gamma of 2.8 was applied (the LROC data is linear), and the channels
-	//    were multiplied by (0.935, 1.005, 1.04) to balance the color.
-	//  * The intensity range (0.16, 0.4) was mapped into the full
-	//    (0, 255) 8-bit range per channel.
-	// We undo the intensity range and gamma transformations here, but leave the
-	// maximum at 1.0 instead of 0.4.
-	texColor.rgb = vec3(0.4) + 0.6 * texColor.rgb;
-    texColor.rgb = pow(texColor.rgb, vec3(2.8));
-#else
     texColor.rgb = srgbToLinear(texColor.rgb);
-#endif
 
     mediump vec4 finalColor = texColor;
 	// apply (currently only Martian) pole caps. texc.t=0 at south pole, 1 at north pole. 

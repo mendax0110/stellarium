@@ -19,6 +19,7 @@
 
 #include <QOpenGLFunctions_1_0>
 #include "StelApp.hpp"
+#include "StelSRGB.hpp"
 #include "StelCore.hpp"
 #include "StelFileMgr.hpp"
 #include "StelTexture.hpp"
@@ -237,6 +238,7 @@ Planet::Planet(const QString& englishName,
 	  aberrationPush(0.,0.,0.),
 	  haloColor(halocolor),
 	  absoluteMagnitude(-99.0f),
+	  massKg(0.),
 	  albedo(albedo),
 	  roughness(roughness),
 	  outgas_intensity(0.f),
@@ -548,14 +550,14 @@ QString Planet::getInfoString(const StelCore* core, const InfoStringGroup& flags
 		oss << getInfoStringName(core, flags);
 
 		QStringList extraNames=getExtraInfoStrings(Name);
-		if (extraNames.length()>0)
+		if (!extraNames.isEmpty())
 			oss << q_("Additional names: ") << extraNames.join(", ") << "<br/>";
 	}
 
 	if (flags&CatalogNumber)
 	{
 		QStringList extraCat=getExtraInfoStrings(CatalogNumber);
-		if (extraCat.length()>0)
+		if (!extraCat.isEmpty())
 			oss << q_("Additional catalog numbers: ") << extraCat.join(", ") << "<br/>";
 	}
 
@@ -566,10 +568,10 @@ QString Planet::getInfoString(const StelCore* core, const InfoStringGroup& flags
 			const QString cometType = (static_cast<KeplerOrbit*>(orbitPtr)->getEccentricity() < 1.0) ?
 						qc_("periodic", "type of comet") :
 						qc_("non-periodic", "type of comet");
-			oss << QString("%1: <b>%2</b> (%3)<br/>").arg(q_("Type"), q_(getPlanetTypeString()), cometType);
+			oss << QString("%1: <b>%2</b> (%3)<br/>").arg(q_("Type"), getObjectTypeI18n(), cometType);
 		}
 		else		
-			oss << QString("%1: <b>%2</b><br/>").arg(q_("Type"), q_(getPlanetTypeString()));		
+			oss << QString("%1: <b>%2</b><br/>").arg(q_("Type"), getObjectTypeI18n());
 	}
 
 	if (getPlanetType()==PlanetType::isObserver)
@@ -1614,6 +1616,47 @@ QVariantMap Planet::getInfoMap(const StelCore *core) const
 				QPair<double,double> magnitudes = getLunarEclipseMagnitudes();
 				map.insert("penumbral-eclipse-magnitude", magnitudes.first);
 				map.insert("umbral-eclipse-magnitude", magnitudes.second);
+
+				// For computing the Moon age we use geocentric coordinates
+				StelCore* core1 = StelApp::getInstance().getCore(); // we need non-const reference here.
+				const bool useTopocentric = core1->getUseTopocentricCoordinates();
+				core1->setUseTopocentricCoordinates(false);
+				core1->update(0); // enforce update cache!
+				const double eclJDE = earth->getRotObliquity(core1->getJDE());
+				double ra_equ, dec_equ, lambdaMoon, lambdaSun, betaMoon, betaSun, raSun, deSun;
+				StelUtils::rectToSphe(&ra_equ,&dec_equ, getEquinoxEquatorialPos(core1));
+				StelUtils::equToEcl(ra_equ, dec_equ, eclJDE, &lambdaMoon, &betaMoon);
+				StelUtils::rectToSphe(&raSun,&deSun, ssystem->getSun()->getEquinoxEquatorialPos(core1));
+				StelUtils::equToEcl(raSun, deSun, eclJDE, &lambdaSun, &betaSun);
+				core1->setUseTopocentricCoordinates(useTopocentric);
+				core1->update(0); // enforce update cache to avoid odd selection of Moon details!
+				const double deltaLong = StelUtils::fmodpos((lambdaMoon-lambdaSun)*M_180_PI, 360.);
+				QString moonPhase = "";
+				if (deltaLong<0.5 || deltaLong>359.5)
+					moonPhase = qc_("New Moon", "Moon phase");
+				else if (deltaLong<89.5)
+					moonPhase = qc_("Waxing Crescent", "Moon phase");
+				else if (deltaLong<90.5)
+					moonPhase = qc_("First Quarter", "Moon phase");
+				else if (deltaLong<179.5)
+					moonPhase = qc_("Waxing Gibbous", "Moon phase");
+				else if (deltaLong<180.5)
+					moonPhase = qc_("Full Moon", "Moon phase");
+				else if (deltaLong<269.5)
+					moonPhase = qc_("Waning Gibbous", "Moon phase");
+				else if (deltaLong<270.5)
+					moonPhase = qc_("Third Quarter", "Moon phase");
+				else if (deltaLong<359.5)
+					moonPhase = qc_("Waning Crescent", "Moon phase");
+				else
+				{
+					qWarning() << "ERROR IN PHASE STRING PROGRAMMING!";
+					Q_ASSERT(0);
+				}
+				map.insert("phase-name", moonPhase);
+
+				const double age = deltaLong*29.530588853/360.;
+				map.insert("age", QString::number(age, 'f', 2));
 			}
 		}
 	}
@@ -1736,7 +1779,7 @@ void Planet::setRotationElements(const QString name,
 
 void Planet::setSiderealPeriod(const double siderealPeriod)
 {
-	Q_ASSERT(!qFuzzyCompare(siderealPeriod, 0.) || (orbitPtr && pType!=isObserver) || englishName=="Sun");
+	Q_ASSERT(!qFuzzyCompare(siderealPeriod, 0.) || orbitPtr || englishName=="Sun");
 
 	this->siderealPeriod = siderealPeriod;
 	if (orbitPtr && pType!=isObserver)
@@ -2314,7 +2357,7 @@ QPair<Vec4d, Vec3d> Planet::getSubSolarObserverPoints(const StelCore *core, bool
 //		       ));
 //
 //	StelObjectMgr& objMgr = StelApp::getInstance().getStelObjectMgr();
-//		if (objMgr.getSelectedObject().length()>0)
+//		if (!objMgr.getSelectedObject().isEmpty())
 //			objMgr.getSelectedObject()[0]->addToExtraInfoString(StelObject::DebugAid, debugAid);
 	return ret;
 }
@@ -2497,7 +2540,7 @@ float Planet::getVMagnitude(const StelCore* core) const
 		static const double lunarMeanDistSq=lunarMeanDist*lunarMeanDist;
 		fluxIll *= (lunarMeanDistSq/observerPlanetRq);
 
-		// compute flux of ashen light: Agrawal 2016.
+		// compute flux of earthshine: Agrawal 2016.
 		const double beta=parent->equatorialRadius*parent->equatorialRadius/eclipticPos.normSquared();
 		const double gamma=equatorialRadius*equatorialRadius/eclipticPos.normSquared();
 
@@ -3150,20 +3193,24 @@ bool Planet::initShader()
 	shaderError = false;
 
 	// Default planet shader program
-	planetShaderProgram = createShader("planetShaderProgram",planetShaderVars,vsrc,fsrc);
+	planetShaderProgram = createShader("planetShaderProgram",planetShaderVars,vsrc,
+									   makeSRGBUtilsShader()+fsrc);
 	// Planet with ring shader program
-	ringPlanetShaderProgram = createShader("ringPlanetShaderProgram",ringPlanetShaderVars,vsrc,fsrc,"#define RINGS_SUPPORT\n\n");
+	ringPlanetShaderProgram = createShader("ringPlanetShaderProgram",ringPlanetShaderVars,vsrc,
+										   makeSRGBUtilsShader()+fsrc,"#define RINGS_SUPPORT\n\n");
 	// Moon shader program
-	moonShaderProgram = createShader("moonShaderProgram",moonShaderVars,vsrc,fsrc,"#define IS_MOON\n\n");
+	moonShaderProgram = createShader("moonShaderProgram",moonShaderVars,vsrc,
+									 makeSRGBUtilsShader()+fsrc,"#define IS_MOON\n\n");
 	// OBJ model shader program
 	// we REQUIRE some fixed attribute locations here
 	QMap<QByteArray,int> attrLoc;
 	attrLoc.insert("unprojectedVertex", StelOpenGLArray::ATTLOC_VERTEX);
 	attrLoc.insert("texCoord", StelOpenGLArray::ATTLOC_TEXCOORD);
 	attrLoc.insert("normalIn", StelOpenGLArray::ATTLOC_NORMAL);
-	objShaderProgram = createShader("objShaderProgram",objShaderVars,vsrc,fsrc,"#define IS_OBJ\n\n",attrLoc);
+	objShaderProgram = createShader("objShaderProgram",objShaderVars,vsrc,
+									makeSRGBUtilsShader()+fsrc,"#define IS_OBJ\n\n",attrLoc);
 	//OBJ shader with shadowmap support
-	objShadowShaderProgram = createShader("objShadowShaderProgram",objShadowShaderVars,vsrc,fsrc,
+	objShadowShaderProgram = createShader("objShadowShaderProgram",objShadowShaderVars,vsrc,makeSRGBUtilsShader()+fsrc,
 					      "#define IS_OBJ\n"
 					      "#define SHADOWMAP\n"
 					      "#define SM_SIZE " STRINGIFY(SM_SIZE) "\n"
@@ -3563,20 +3610,20 @@ void Planet::draw3dModel(StelCore* core, StelProjector::ModelViewTranformP trans
 
 		if (isMoon)
 		{
-			// ambient for the moon can provide the Ashen light!
+			// ambient for the moon can provide the earthshine!
 			// during daylight, this still should not make moon visible. We grab sky brightness and dim the moon.
 			// This approach here is again pretty ad-hoc.
 			// We have 5000cd/m^2 at sunset returned (Note this may be unnaturally much. Should be rather 10, but the 5000 may include the sun).
-			// When atm.brightness has fallen to 2000cd/m^2, we allow ashen light to appear visible. Its impact is full when atm.brightness is below 1000.
+			// When atm.brightness has fallen to 2000cd/m^2, we allow earthshine to appear visible. Its impact is full when atm.brightness is below 1000.
 			LandscapeMgr* lmgr = GETSTELMODULE(LandscapeMgr);
 			Q_ASSERT(lmgr);
 			const float atmLum=(lmgr->getFlagAtmosphere() ? lmgr->getAtmosphereAverageLuminance() : 0.0f);
 			if (atmLum<2000.0f)
 			{
 				float atmScaling=1.0f - (qMax(1000.0f, atmLum)-1000.0f)*0.001f; // full impact when atmLum<1000.
-				float ashenFactor=(1.0f-getPhase(ssm->getEarth()->getHeliocentricEclipticPos())); // We really mean the Earth for this! (Try observing from Mars ;-)
-				ashenFactor*=ashenFactor*0.15f*atmScaling;
-				light.ambient = Vec4f(ashenFactor, magFactorGreen*ashenFactor, magFactorBlue*ashenFactor);
+				float earthshineFactor=(1.0f-getPhase(ssm->getEarth()->getHeliocentricEclipticPos())); // We really mean the Earth for this! (Try observing from Mars ;-)
+				earthshineFactor*=earthshineFactor*0.15f*atmScaling;
+				light.ambient = Vec3f(earthshineFactor, magFactorGreen*earthshineFactor, magFactorBlue*earthshineFactor);
 			}
 			const float fov=core->getProjection(transfo)->getFov();
 			float fovFactor=1.3f;

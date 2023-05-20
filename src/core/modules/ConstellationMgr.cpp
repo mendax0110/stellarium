@@ -152,15 +152,12 @@ double ConstellationMgr::getCallOrder(StelModuleActionName actionName) const
 
 void ConstellationMgr::reloadSkyCulture()
 {
-	updateSkyCulture(StelApp::getInstance().getSkyCultureMgr().getCurrentSkyCultureID());
+	StelSkyCultureMgr* skyCulMgr = &StelApp::getInstance().getSkyCultureMgr();
+	emit skyCulMgr->currentSkyCultureChanged(skyCulMgr->getCurrentSkyCultureID());
 }
 
 void ConstellationMgr::updateSkyCulture(const QString& skyCultureDir)
 {
-	// Check if the sky culture changed since last load, if not don't load anything
-	if (lastLoadedSkyCulture == skyCultureDir)
-		return;
-
 	// Find constellation art.  If this doesn't exist, warn, but continue using ""
 	// the loadLinesAndArt function knows how to handle this (just loads lines).
 	QString conArtFile = StelFileMgr::findFile("skycultures/"+skyCultureDir+"/constellationsart.fab");
@@ -295,7 +292,7 @@ void ConstellationMgr::deselectConstellations(void)
 		}
 
 		// If any constellation is selected at the moment, then let's do not touch to it!
-		if (omgr->getWasSelected() && selected.size()>0)
+		if (omgr->getWasSelected() && !selected.empty())
 			selected.pop_back();
 
 		// Let's hide all previously selected constellations

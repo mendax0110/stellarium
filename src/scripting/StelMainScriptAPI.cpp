@@ -340,15 +340,50 @@ QStringList StelMainScriptAPI::getAllTimezoneNames()
 	return StelApp::getInstance().getLocationMgr().getAllTimezoneNames();
 }
 
+// Coordinate conversion: geographic (WGS84)-->UTM
+QList<double> StelMainScriptAPI::geo2utm(const double longitude, const double latitude, const int zone)
+{
+	QPair<Vec3d, Vec2d> utm=StelLocationMgr::geo2utm(longitude, latitude, zone);
+	Vec3d pos=utm.first;
+	Vec2d ang=utm.second;
+	return QList<double>({pos[0], pos[1], pos[2], ang[0]*M_180_PI, ang[1]});
+}
+// Coordinate conversion: UTM->geographic (WGS84)
+QList<double> StelMainScriptAPI::utm2geo(const double easting, const double northing, const int zone, const bool north)
+{
+	QPair<Vec3d, Vec2d> geo=StelLocationMgr::utm2geo(easting, northing, zone, north);
+	Vec3d pos=geo.first;
+	Vec2d ang=geo.second;
+	return QList<double>({pos[0], pos[1], pos[2], ang[0]*M_180_PI, ang[1]});
+}
+
 void StelMainScriptAPI::screenshot(const QString& prefix, bool invert, const QString& dir, const bool overwrite, const QString &format)
 {
-	bool oldInvertSetting = StelMainView::getInstance().getFlagInvertScreenShotColors();
-	QString oldFormat=StelMainView::getInstance().getScreenshotFormat();
-	StelMainView::getInstance().setFlagInvertScreenShotColors(invert);
-	if ((format.length()>0) && (format.length()<=4))
+	QString realDir("");
+	if ((!dir.isEmpty()) && (!StelApp::getInstance().getScriptMgr().getFlagAllowExternalScreenshotDir()))
+	{
+		qWarning() << "SCRIPT CONFIGURATION ISSUE: the script wants to store a screenshot" << prefix << "." << format << "to an external directory " << dir;
+		qWarning() << "  To enable this, check the settings in the script console";
+		qWarning() << "  or set entry scripts/flag_allow_screenshots_dir=true in config.ini.";
+	}
+	else
+		realDir=dir;
+
+
+	const bool oldInvertSetting = StelMainView::getInstance().getFlagInvertScreenShotColors();
+	const QString oldFormat=StelMainView::getInstance().getScreenshotFormat();
+	if ((!format.isEmpty()) && (format.length()<=4))
 		StelMainView::getInstance().setScreenshotFormat(format);
+	// Check requested against set image format.
+	if ((!format.isEmpty()) && (StelMainView::getInstance().getScreenshotFormat() != format))
+	{
+		qWarning() << "Screenshot format" << format << "not supported. Not saving screenshot.";
+		return;
+	}
+
+	StelMainView::getInstance().setFlagInvertScreenShotColors(invert);
 	StelMainView::getInstance().setFlagOverwriteScreenShots(overwrite);
-	StelMainView::getInstance().saveScreenShot(prefix, dir, overwrite);
+	StelMainView::getInstance().saveScreenShot(prefix, realDir, overwrite);
 	StelMainView::getInstance().setFlagInvertScreenShotColors(oldInvertSetting);
 	StelMainView::getInstance().setScreenshotFormat(oldFormat);
 }

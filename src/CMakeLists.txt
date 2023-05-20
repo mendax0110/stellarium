@@ -11,6 +11,7 @@ ENDIF()
 
 SET(stellarium_lib_SRCS
      core/BlueNoiseTriangleRemapped.hpp
+	 core/StelSRGB.hpp
      core/Dithering.hpp
      core/Dithering.cpp
      core/SaturationShader.hpp
@@ -126,6 +127,8 @@ SET(stellarium_lib_SRCS
      core/StelOpenGLArray.cpp
      core/StelHips.hpp
      core/StelHips.cpp
+     core/TextureAverageComputer.hpp
+     core/TextureAverageComputer.cpp
 
      ${spout_SRCS}
 
@@ -354,9 +357,6 @@ IF(STELLARIUM_GUI_MODE STREQUAL "Standard")
           gui/AstroCalcChart.cpp
           gui/ObsListDialog.hpp
           gui/ObsListDialog.cpp
-          gui/ObsListCreateEditDialog.hpp
-          gui/ObsListCreateEditDialog.cpp
-          gui/ObservingListCommon.hpp
           gui/StelDialog.hpp
           gui/StelDialog_p.hpp
           gui/StelDialog.cpp
@@ -390,7 +390,6 @@ IF(STELLARIUM_GUI_MODE STREQUAL "Standard")
           gui/astroCalcExtraEphemerisDialog.ui
           gui/astroCalcCustomStepsDialog.ui
           gui/obsListDialog.ui
-          gui/obsListCreateEditDialog.ui
           gui/addRemoveLandscapesDialog.ui
           gui/dsoColorsDialog.ui
           gui/orbitColorsDialog.ui

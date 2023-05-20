@@ -381,7 +381,7 @@
                    <string>Use horizontal coordinates</string>
                   </property>
                   <property name="text">
-                   <string comment="horizontal coordinates">H.C.</string>
+                   <string comment="horizontal coordinates">hor. coord.</string>
                   </property>
                  </widget>
                 </item>
@@ -725,12 +725,22 @@
              </spacer>
             </item>
             <item>
+             <widget class="QCheckBox" name="ephemerisIgnoreDateTestCheckBox">
+              <property name="toolTip">
+               <string>Allow results outside recommended time range of orbital elements</string>
+              </property>
+              <property name="text">
+               <string comment="Ignore date test">boundless</string>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QCheckBox" name="ephemerisHorizontalCoordinatesCheckBox">
               <property name="toolTip">
                <string>Use horizontal coordinates</string>
               </property>
               <property name="text">
-               <string comment="horizontal coordinates">H.C.</string>
+               <string comment="horizontal coordinates">hor. coord.</string>
               </property>
              </widget>
             </item>
@@ -884,10 +894,25 @@
                  <bool>true</bool>
                 </property>
                 <property name="displayFormat">
-                 <string notr="true">yyyy.MM.dd hh:mm</string>
+                 <string notr="true">yyyy.MM.dd hh:mm:ss</string>
                 </property>
                 <property name="calendarPopup">
                  <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="pushButtonNow">
+                <property name="toolTip">
+                 <string>Now</string>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="icon">
+                 <iconset resource="../../data/gui/guiRes.qrc">
+                  <normaloff>:/graphicGui/btTimeNow-off.png</normaloff>
+                  <disabledoff>:/graphicGui/btTimeNow-off.png</disabledoff>:/graphicGui/btTimeNow-off.png</iconset>
                 </property>
                </widget>
               </item>
@@ -908,7 +933,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="displayFormat">
-                 <string notr="true">yyyy.MM.dd hh:mm</string>
+                 <string notr="true">yyyy.MM.dd hh:mm:ss</string>
                 </property>
                 <property name="calendarPopup">
                  <bool>true</bool>
@@ -3077,6 +3102,11 @@
    <container>1</container>
   </customwidget>
   <customwidget>
+   <class>StelCloseButton</class>
+   <extends>QPushButton</extends>
+   <header>gui/StelCloseButton.hpp</header>
+  </customwidget>
+  <customwidget>
    <class>AngleSpinBox</class>
    <extends>QSpinBox</extends>
    <header>AngleSpinBox.hpp</header>
@@ -3085,11 +3115,6 @@
    <class>QChartView</class>
    <extends>QGraphicsView</extends>
    <header>QtCharts/qchartview.h</header>
-  </customwidget>
-  <customwidget>
-   <class>StelCloseButton</class>
-   <extends>QPushButton</extends>
-   <header>gui/StelCloseButton.hpp</header>
   </customwidget>
  </customwidgets>
  <resources>

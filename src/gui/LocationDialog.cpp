@@ -265,15 +265,10 @@ void LocationDialog::updateFromProgram(const StelLocation& newLocation)
 		ui->pushButtonReturnToDefault->setEnabled(!b);
 	}
 
-	const QString& key1 = newLocation.getID();
-	const QString& key2 = locationFromFields().getID();
-	if (key1!=key2)
-	{
-		if (newLocation.role!='o')
-			GETSTELMODULE(StelMovementMgr)->setFlagTracking(false);
-		setFieldsFromLocation(newLocation);
-		setLocationUIvisible(newLocation.role!='o'); // hide various detail settings when changing to an "observer"
-	}
+	if (newLocation.role!='o')
+		GETSTELMODULE(StelMovementMgr)->setFlagTracking(false);
+	setFieldsFromLocation(newLocation);
+	setLocationUIvisible(newLocation.role!='o'); // hide various detail settings when changing to an "observer"
 }
 
 void LocationDialog::disconnectEditSignals()
@@ -307,15 +302,6 @@ void LocationDialog::setLocationUIvisible(bool visible)
 	ui->labelName->setVisible(visible);
 	ui->frame_citylist->setVisible(visible);
 	ui->mapWidget->setMarkerVisible(visible);
-
-	if(visible)
-	{
-		connect(ui->mapWidget, SIGNAL(positionChanged(double, double)), this, SLOT(setLocationFromMap(double, double)));
-	}
-	else
-	{
-		disconnect(ui->mapWidget, SIGNAL(positionChanged(double, double)), this, SLOT(setLocationFromMap(double, double)));
-	}
 	ui->addLocationToListPushButton->setVisible(visible);
 	ui->deleteLocationFromListPushButton->setVisible(visible);
 }
@@ -345,7 +331,6 @@ void LocationDialog::setFieldsFromLocation(const StelLocation& loc)
 	ui->planetNameComboBox->setCurrentIndex(idx);
 
 	idx = ui->regionNameComboBox->findData(loc.region, Qt::UserRole, Qt::MatchCaseSensitive);
-	qWarning() << "[2]" << loc.region << idx;
 	if (idx<0)
 	{
 		if (ui->planetNameComboBox->currentData(Qt::UserRole).toString()=="Earth")

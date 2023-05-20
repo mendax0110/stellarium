@@ -254,7 +254,6 @@ dso\_supernova\_remnant\_color          & \ccbox{0.1,1.0,0.1} & supernovae remna
 dso\_supernova\_candidate\_color        & \ccbox{0.1,1.0,0.1} & supernova candidates symbols. \\%\midrule
 dso\_supernova\_remnant\_cand\_color    & \ccbox{0.1,1.0,0.1} & supernova remnant candidates symbols. \\%\midrule
 dso\_interstellar\_matter\_color        & \ccbox{0.1,1.0,0.1} & interstellar matter symbols. \\%\midrule
-dso\_cluster\_with\_nebulosity\_color   & \ccbox{0.1,1.0,0.1} & clusters associated with nebulosity symbols. \\%\midrule
 dso\_molecular\_cloud\_color            & \ccbox{0.1,1.0,0.1} & molecular clouds symbols. \\%\midrule
 dso\_possible\_planetary\_nebula\_color & \ccbox{0.1,1.0,0.1} & possible planetary nebulae symbols. \\%\midrule
 dso\_protoplanetary\_nebula\_color      & \ccbox{0.1,1.0,0.1} & protoplanetary nebulae symbols. \\%\midrule
@@ -736,12 +735,10 @@ password   & string & Password for proxy. E.g. \emph{xxxxx}\\\bottomrule
 \begin{tabularx}{\textwidth}{l|l|l|X}\toprule
 \emph{ID}                  & \emph{Type} & \emph{Default} & \emph{Description}\\\midrule
 startup\_script                            & string & startup.ssc & name of script executed on program start\\
-flag\_script\_allow\_write\_absolute\_path & bool   & false       & set true to let scripts store files to absolute pathnames.
+flag\_allow\_screenshots\_dir              & bool   & false       & Allow scripts to set a target directory.\\
+flag\_allow\_write\_absolute\_path         & bool   & false       & set true to let scripts store output files to absolute pathnames.
                                                                     This may pose a security risk if you run scripts from other authors
                                                                     without checking what they are doing.\\\bottomrule 
-%% These are unused as on 0.15pre.
-%flag\_script\_allow\_ui        & bool &\\\midrule
-%scripting\_allow\_write\_files & bool &\\\bottomrule
 \end{tabularx}
 
 \subsection{\big[search\big]}
