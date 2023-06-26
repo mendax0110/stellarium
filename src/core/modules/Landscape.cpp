@@ -1210,7 +1210,6 @@ void LandscapeOldStyle::drawLowGL(StelCore* core, bool onlyPolygon)
 		return;
 
 	StelPainter painter(core->getProjection(StelCore::FrameAltAz, StelCore::RefractionOff));
-	const float ppx = static_cast<float>(painter.getProjector()->getDevicePixelsPerPixel());
 	painter.setBlending(true);
 	painter.setCullFace(true);
 
@@ -1452,7 +1451,6 @@ void LandscapePolygonal::draw(StelCore* core, bool onlyPolygon)
 	transfo->combine(Mat4d::zrotation(-static_cast<double>(angleRotateZOffset)));
 	const StelProjectorP prj = core->getProjection(transfo);
 	StelPainter sPainter(prj);
-	const float ppx = static_cast<float>(sPainter.getProjector()->getDevicePixelsPerPixel());
 
 	// Normal transparency mode for the transition blending
 	sPainter.setBlending(true);
@@ -1486,6 +1484,11 @@ float LandscapePolygonal::getOpacity(Vec3d azalt) const
 		azalt.transfo4d(Mat4d::zrotation(static_cast<double>(angleRotateZOffset)));
 
 	if (horizonPolygon->contains(azalt)) return 1.0f; else return 0.0f;
+}
+
+void LandscapePolygonal::setGroundColor(const Vec3f &color)
+{
+	groundColor=color;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////

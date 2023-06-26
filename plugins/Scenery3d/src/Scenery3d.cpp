@@ -314,6 +314,7 @@ void Scenery3d::loadConfig()
 	renderer->setLazyCubemapInterval(conf->value("cubemap_lazy_interval",1.0).toDouble());
 	renderer->setPixelLightingEnabled(conf->value("flag_pixel_lighting", false).toBool());
 	renderer->setLocationInfoEnabled(conf->value("flag_location_info", false).toBool());
+	renderer->setLocationInfoStyle(static_cast<S3DRenderer::LocationInfoStyle>(conf->value("location_info_style", 0).toInt()));
 
 	forceHorizonPolyline = conf->value("force_landscape_polyline", false).toBool();
 
@@ -548,7 +549,7 @@ void Scenery3d::loadSceneCompleted()
 	if (info.hasLocation())
 	{
 		qCDebug(scenery3d) << "Setting location to given coordinates";
-		StelApp::getInstance().getCore()->moveObserverTo(*info.location, 0., 0.);
+		StelApp::getInstance().getCore()->moveObserverTo(*info.location, 0., 0., info.landscapeName);
 	}
 	else qCDebug(scenery3d) << "No coordinates given in scenery3d.ini";
 
@@ -847,6 +848,23 @@ void Scenery3d::setEnableLocationInfo(const bool enableLocationInfo)
 	}
 }
 
+S3DRenderer::LocationInfoStyle Scenery3d::getLocationInfoStyle() const
+{
+	return renderer->getLocationInfoStyle();
+}
+
+void Scenery3d::setLocationInfoStyle(const S3DRenderer::LocationInfoStyle style)
+{
+	if(style != renderer->getLocationInfoStyle())
+	{
+		renderer->setLocationInfoStyle(style);
+
+		conf->setValue(S3D_CONFIG_PREFIX + "/location_info_style", style);
+
+		emit locationInfoStyleChanged(style);
+	}
+}
+
 void Scenery3d::setForceHorizonPolyline(const bool forcePolyline)
 {
 	if(forcePolyline != getForceHorizonPolyline())
@@ -921,6 +939,24 @@ void Scenery3d::setDirectionalLightPush(const float push)
 	conf->setValue(S3D_CONFIG_PREFIX + "/directional_push",push);
 
 	emit directionalLightPushChanged(push);
+}
+
+// Allow ignoring the configured start_az_alt_fov.
+// This may be helpful in a digital planetarium where fov should stay at ~180...200° and view direction is usually close to zenith.
+bool Scenery3d::getIgnoreInitialView() const
+{
+	return ignoreInitialViewSettings;
+}
+
+void Scenery3d::setIgnoreInitialView(const bool ignore)
+{
+	if (ignoreInitialViewSettings != ignore)
+	{
+		ignoreInitialViewSettings=ignore;
+		conf->setValue(S3D_CONFIG_PREFIX + "/ignore_start_az_alt_fov",ignore);
+
+		emit ignoreInitialViewChanged(ignore);
+	}
 }
 
 
@@ -1090,7 +1126,7 @@ void Scenery3d::setView(const StoredView &view, const bool setDate)
 	mvMgr->zoomTo(view.view_fov[2]);
 }
 
-StoredView Scenery3d::getCurrentView()
+StoredView Scenery3d::getCurrentView() const
 {
 	if(!currentScene)
 	{

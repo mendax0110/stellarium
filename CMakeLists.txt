@@ -354,8 +354,8 @@ IF("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
           SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-const-variable -Wno-unused-result")
      ENDIF()
      IF(APPLE)
-          SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-common -Wall -Wextra -Wno-unused-parameter")
-          SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-common -Wall -Wextra -Wno-unknown-warning-option")
+	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-common -Wall -Wextra -Wno-unused-parameter -Wno-string-plus-int")
+	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-common -Wall -Wextra -Wno-unknown-warning-option -Wno-string-plus-int")
      ENDIF()
 ENDIF()
 
@@ -538,7 +538,8 @@ ADD_PLUGIN(Satellites 1)
 ADD_PLUGIN(Scenery3d 1)
 ADD_PLUGIN(SolarSystemEditor 1)
 ADD_PLUGIN(Supernovae 1)
-ADD_PLUGIN(TextUserInterface 1)
+# Candidate to removing as an archaic plugin
+ADD_PLUGIN(TextUserInterface 0)
 ADD_PLUGIN(TelescopeControl 1)
 ADD_PLUGIN(Vts 0)
 
@@ -689,8 +690,8 @@ SET(CMAKE_INCLUDE_CURRENT_DIR ON)
 IF(ENABLE_SHOWMYSKY)
     ADD_DEFINITIONS(-DENABLE_SHOWMYSKY)
     CPMFindPackage(NAME ShowMySky-Qt${QT_VERSION_MAJOR}
-		URL https://github.com/10110111/CalcMySky/archive/refs/tags/v0.3.0.tar.gz
-        URL_HASH SHA256=f5ea2d3981de0d3e93a0d12b12bea9e9cfcf51b62336740be641f4ba74f98bdd
+		URL https://github.com/10110111/CalcMySky/archive/refs/tags/v0.3.1.tar.gz
+        URL_HASH SHA256=d284eaabcf21ad3d1f520a1d1b1b533f7c5f5a44ba92495dd38e238874e8e4d7
         EXCLUDE_FROM_ALL yes
         OPTIONS "QT_VERSION ${QT_VERSION_MAJOR}")
     IF(ShowMySky-Qt${QT_VERSION_MAJOR}_ADDED)
@@ -821,8 +822,8 @@ IF(ENABLE_XLSX)
          MESSAGE(STATUS "Using system-provided QXlsx ${QXlsx_VERSION}")
      ELSE()
          CPMAddPackage(NAME QXlsxQt${QT_VERSION_MAJOR}
-             URL https://github.com/QtExcel/QXlsx/archive/refs/tags/v1.4.5.tar.gz
-             URL_HASH SHA256=1b546b28863cb86889da586c1d702f1627b9e6a946acf13d52b1f3dd65c6df8f
+             URL https://github.com/QtExcel/QXlsx/archive/refs/tags/v1.4.6.tar.gz
+             URL_HASH SHA256=969a947af6a78dad9f2418dfc84e528d212ceb98e6392edf859dbff4f8828a77
              EXCLUDE_FROM_ALL ON
              SOURCE_SUBDIR QXlsx)
      ENDIF()

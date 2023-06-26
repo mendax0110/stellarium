@@ -38,6 +38,7 @@
 #include "StelMovementMgr.hpp"
 #include "StelPainter.hpp"
 #include "StelTranslator.hpp"
+#include "StelLocaleMgr.hpp"
 #include "StelUtils.hpp"
 #include "StelOpenGL.hpp"
 #include "StelMainView.hpp"
@@ -139,6 +140,13 @@ const QMap<Planet::PlanetType, QString> Planet::pTypeMap = // Maps type to engli
 	{ Planet::isSednoid,	N_("sednoid") },
 	{ Planet::isInterstellar,N_("interstellar object") },
 	{ Planet::isUNDEFINED,	"UNDEFINED" } // something must be broken before we ever see this!
+};
+
+const QMap<QString, QString> Planet::nPlanetMap =
+{
+	{ "E", "Earth" },	{ "M", "Mars" },	{ "J", "Jupiter" },
+	{ "S", "Saturn" },	{ "U", "Uranus" },	{ "N", "Neptune" },
+	{ "P", "(134340) Pluto" }
 };
 
 const QMap<Planet::ApparentMagnitudeAlgorithm, QString> Planet::vMagAlgorithmMap =
@@ -265,6 +273,8 @@ Planet::Planet(const QString& englishName,
 	  gl(Q_NULLPTR),
 	  iauMoonNumber(""),
 	  b_v(99.f),
+	  discoverer(""),
+	  discoveryDate(""),
 	  orbitPositionsCache(ORBIT_SEGMENTS * 2)
 {
 	// Initialize pType with the key found in pTypeMap, or mark planet type as undefined.
@@ -402,7 +412,7 @@ void Planet::translateName(const StelTranslator& trans)
 	nativeNameMeaningI18n = (!nativeNameMeaning.isEmpty() ? trans.qtranslate(nativeNameMeaning) : "");
 }
 
-void Planet::setIAUMoonNumber(QString designation)
+void Planet::setIAUMoonNumber(const QString &designation)
 {
 	if (!iauMoonNumber.isEmpty())
 		return;
@@ -413,17 +423,39 @@ void Planet::setIAUMoonNumber(QString designation)
 QString Planet::getEnglishName() const
 {
 	if (!iauMoonNumber.isEmpty())
-		return QString("%1 (%2)").arg(englishName, iauMoonNumber);
+		return QString("(%1) %2").arg(iauMoonNumber, englishName);
 	else
 		return englishName;
+}
+
+QString Planet::getIAUDesignation() const
+{
+	if (iauMoonNumber.isEmpty())
+		return QString();
+	else
+	{
+		if (!iauMoonNumber.contains(" ")) // We use short designations for moons of major planets, so, no space char in this case!
+			return QString("%1 %2").arg(nPlanetMap.value(iauMoonNumber.mid(0, 1).trimmed()), iauMoonNumber.mid(1).trimmed());
+		else
+			return QString();
+	}
 }
 
 QString Planet::getNameI18n() const
 {
 	if (!iauMoonNumber.isEmpty())
-		return QString("%1 (%2)").arg(nameI18, iauMoonNumber);
+		return QString("(%1) %2").arg(iauMoonNumber, nameI18);
 	else
 		return nameI18;
+}
+
+QString Planet::getDiscoveryCircumstances() const
+{
+	QString ddate = StelUtils::localeDiscoveryDateString(discoveryDate);
+	if (discoverer.isEmpty())
+		return ddate;
+	else
+		return QString("%1 (%2)").arg(ddate, discoverer);
 }
 
 const QString Planet::getContextString() const
@@ -505,11 +537,6 @@ QString Planet::getPlanetLabel() const
 		}
 	}
 
-	oss.setRealNumberNotation(QTextStream::FixedNotation);
-	oss.setRealNumberPrecision(1);
-	if (sphereScale != 1.)
-		oss << QString::fromUtf8(" (\xC3\x97") << sphereScale << ")";
-
 	return str;
 }
 
@@ -518,7 +545,19 @@ QString Planet::getInfoStringName(const StelCore *core, const InfoStringGroup& f
 	Q_UNUSED(core) Q_UNUSED(flags)
 	QString str;
 	QTextStream oss(&str);
-	oss << "<h2>" << getPlanetLabel() << "</h2>";
+	oss << "<h2>" << getPlanetLabel();
+
+	// NOTE: currently only moons have an IAU designation
+	QString iau = getIAUDesignation();
+	if (!iau.isEmpty())
+		oss << QString(" (%1)").arg(iau);
+
+	oss.setRealNumberNotation(QTextStream::FixedNotation);
+	oss.setRealNumberPrecision(1);
+	if (sphereScale != 1.)
+		oss << QString::fromUtf8(" (\xC3\x97") << sphereScale << ")";
+
+	oss << "</h2>";
 	return str;
 }
 
@@ -565,9 +604,16 @@ QString Planet::getInfoString(const StelCore* core, const InfoStringGroup& flags
 	{
 		if (getPlanetType()==isComet)
 		{
-			const QString cometType = (static_cast<KeplerOrbit*>(orbitPtr)->getEccentricity() < 1.0) ?
-						qc_("periodic", "type of comet") :
-						qc_("non-periodic", "type of comet");
+			QString cometType = qc_("non-periodic", "type of comet");
+			if (static_cast<KeplerOrbit*>(orbitPtr)->getEccentricity() < 1.0)
+			{
+				const double siderealPeriod = getSiderealPeriod(); // days required for revolution around parent.
+				if (siderealPeriod>0. && siderealPeriod<73050.) // period limit: 200a (200 years = 73050 days)
+					cometType = qc_("short-period", "type of comet");
+				else
+					cometType = qc_("periodic", "type of comet");
+
+			}
 			oss << QString("%1: <b>%2</b> (%3)<br/>").arg(q_("Type"), getObjectTypeI18n(), cometType);
 		}
 		else		
@@ -712,7 +758,12 @@ QString Planet::getInfoString(const StelCore* core, const InfoStringGroup& flags
 	oss << getSolarLunarInfoString(core, flags);
 	if (!hasValidPositionalData(core->getJDE(), PositionQuality::Position))
 	{
-	    oss << q_("NOTE: orbital elements outdated -- consider updating!") << "<br/>";
+		if (orbitPtr && pType>=isArtificial)
+		{
+			StelLocaleMgr* localeMgr = &StelApp::getInstance().getLocaleMgr();
+			double JDE = static_cast<KeplerOrbit*>(orbitPtr)->getEpochJDE();
+			oss << q_("NOTE: elements for epoch %1 probably outdated. Consider updating data!").arg(localeMgr->getPrintableDateLocal(JDE)) << "<br/>";
+		}
 	}
 	postProcessInfoString(str, flags);
 	return str;
@@ -910,7 +961,7 @@ QString Planet::getInfoStringPeriods(const StelCore *core, const InfoStringGroup
 
 Vec4d Planet::getHourlyProperMotion(const StelCore *core) const
 {
-	if (core->getCurrentObserver()->isObserverLifeOver())
+	if (core->getCurrentObserver()->isTraveling())
 		return Vec4d(0.);
 	else
 	{
@@ -1142,6 +1193,9 @@ SolarEclipseData::SolarEclipseData(double JD, double &dRatio, double &latDeg,
 
 QString Planet::getInfoStringExtra(const StelCore *core, const InfoStringGroup& flags) const
 {
+	if (core->getCurrentObserver()->isTraveling()) // transition to elsewhere: report nothing.
+		return QString();
+
 	QString str;
 	QTextStream oss(&str);
 
@@ -1242,7 +1296,7 @@ QString Planet::getInfoStringExtra(const StelCore *core, const InfoStringGroup& 
 			core1->update(0); // enforce update cache to avoid odd selection of Moon details!
 			const double deltaLong = StelUtils::fmodpos((lambdaMoon-lambdaSun)*M_180_PI, 360.);
 			QString moonPhase = "";
-			if (deltaLong<0.5 || deltaLong>359.5)
+			if ((deltaLong<0.5) || (deltaLong>359.5))
 				moonPhase = qc_("New Moon", "Moon phase");
 			else if (deltaLong<89.5)
 				moonPhase = qc_("Waxing Crescent", "Moon phase");
@@ -1444,7 +1498,7 @@ QString Planet::getInfoStringExtra(const StelCore *core, const InfoStringGroup& 
 				StelUtils::rectToSphe(&raMoon, &deMoon, ssystem->getMoon()->getEquinoxEquatorialPos(core1));
 
 				double raDiff = StelUtils::fmodpos((raMoon - raSun)/M_PI_180, 360.0);
-				if (raDiff < 3. || raDiff > 357.)
+				if ((raDiff < 3.) || (raDiff > 357.))
 				{
 					double JD = core1->getJD();
 					double dRatio,latDeg,lngDeg,altitude,pathWidth,duration,magnitude;
@@ -1519,6 +1573,9 @@ QString Planet::getInfoStringExtra(const StelCore *core, const InfoStringGroup& 
 		// Not sure if albedo is at all interesting?
 		if (englishName != "Sun")
 			oss << QString("%1: %2<br/>").arg(q_("Albedo"), QString::number(getAlbedo(), 'f', 2));
+
+		if (!discoveryDate.isEmpty())
+			oss << QString("%1: %2<br/>").arg(q_("Discovered"), getDiscoveryCircumstances());
 	}
 	return str;
 }
@@ -1632,7 +1689,7 @@ QVariantMap Planet::getInfoMap(const StelCore *core) const
 				core1->update(0); // enforce update cache to avoid odd selection of Moon details!
 				const double deltaLong = StelUtils::fmodpos((lambdaMoon-lambdaSun)*M_180_PI, 360.);
 				QString moonPhase = "";
-				if (deltaLong<0.5 || deltaLong>359.5)
+				if ((deltaLong<0.5) || (deltaLong>359.5))
 					moonPhase = qc_("New Moon", "Moon phase");
 				else if (deltaLong<89.5)
 					moonPhase = qc_("Waxing Crescent", "Moon phase");
@@ -1683,7 +1740,7 @@ QPair<double,double> Planet::getLunarEclipseMagnitudes() const
 	const double deShadow = -(deSun);
 	const double raDiff = StelUtils::fmodpos(raMoon - raShadow, 2.*M_PI);
 
-	if (raDiff < 3.*M_PI_180 || raDiff > 357.*M_PI_180)
+	if ((raDiff < 3.*M_PI_180) || (raDiff > 357.*M_PI_180))
 	{
 		// Moon's semi-diameter
 		const double mSD=atan(getEquatorialRadius()/eclipticPos.norm()) * M_180_PI*3600.; // arcsec
@@ -1891,6 +1948,20 @@ QVector<const Planet*> Planet::getCandidatesForShadow() const
 
 void Planet::computePosition(const double dateJDE, const Vec3d &aberrationPush)
 {
+	// Having hundreds of Minor Planets makes this very slow. Especially on transitions between locations (StelCore::moveObserverTo())
+	// it seems acceptable to disable position updates for minor bodies.
+	// TODO: Maybe test for target location and allow updates in this case.
+	StelCore *core=StelApp::getInstance().getCore();
+	bool isTransitioning=false;
+	if (core)
+	{
+		const StelObserver *obs=core->getCurrentObserver();
+		if (obs)
+			isTransitioning=obs->isTraveling();
+	}
+	if (isTransitioning && orbitPtr)
+		return;
+
 	if (fabs(lastJDE-dateJDE)>deltaJDE)
 	{
 		coordFunc(dateJDE, eclipticPos, eclipticVelocity, orbitPtr);
@@ -4915,19 +4986,19 @@ void Planet::drawOrbit(const StelCore* core)
 
 bool Planet::hasValidPositionalData(const double JDE, const PositionQuality purpose) const
 {
-    if ((pType<=isObserver) || (englishName=="Pluto"))
-	    return true;
-    else if (orbitPtr && pType>=isArtificial)
-    {
-	    switch (purpose)
-	    {
-		    case Position:
-			    return static_cast<KeplerOrbit*>(orbitPtr)->objectDateValid(JDE);
-		    case OrbitPlotting:
-			    return static_cast<KeplerOrbit*>(orbitPtr)->objectDateGoodEnoughForOrbits(JDE);
-	    }
-    }
-    return false;
+	if ((pType<=isObserver) || (englishName=="Pluto"))
+		return true;
+	else if (orbitPtr && pType>=isArtificial)
+	{
+		switch (purpose)
+		{
+			case Position:
+				return static_cast<KeplerOrbit*>(orbitPtr)->objectDateValid(JDE);
+			case OrbitPlotting:
+				return static_cast<KeplerOrbit*>(orbitPtr)->objectDateGoodEnoughForOrbits(JDE);
+		}
+	}
+	return false;
 }
 
 Vec2d Planet::getValidPositionalDataRange(const PositionQuality purpose) const
@@ -4961,11 +5032,11 @@ void Planet::setApparentMagnitudeAlgorithm(QString algorithm)
 // NOTE: Limitation for efficiency: If this is a planet moon from another planet, we compute RTS for the parent planet instead!
 Vec4d Planet::getClosestRTSTime(const StelCore *core, const double altitude) const
 {
-	const StelLocation loc=core->getCurrentLocation();
-	if (loc.name.contains("->")) // a spaceship
+	if (core->getCurrentObserver()->isTraveling()) // transition to elsewhere
 		return Vec4d(0., 0., 0., -1000.);
 
 	// Keep time in sync (method from line 592) to fix slow down of time when the moon is selected
+	const StelLocation loc=core->getCurrentLocation();
 	const double currentJD = core->getJDOfLastJDUpdate();
 	const qint64 millis = core->getMilliSecondsOfLastJDUpdate();
 	const double currentJDE = core->getJDE();
@@ -5293,6 +5364,10 @@ Vec4d Planet::getClosestRTSTime(const StelCore *core, const double altitude) con
 
 Vec4d Planet::getRTSTime(const StelCore *core, const double altitude) const
 {
+	// During transitions, return invalid results and save lots of time.
+	if (core->getCurrentObserver()->isTraveling())
+		return Vec4d(0., 0., 0., -1000.);
+
 	// Keep time in sync (method from line 592) to fix slow down of time when the moon is selected
 	const double currentJD = core->getJDOfLastJDUpdate();
 	const qint64 millis = core->getMilliSecondsOfLastJDUpdate();

@@ -34,8 +34,8 @@
 
 #include "SceneInfo.hpp"
 #include "S3DEnum.hpp"
+#include "S3DRenderer.hpp"
 
-class S3DRenderer;
 class Scenery3dDialog;
 class StoredViewDialog;
 class QSettings;
@@ -83,11 +83,13 @@ class Scenery3d : public StelModule
 	Q_PROPERTY(bool useFullCubemapShadows        READ getUseFullCubemapShadows  WRITE setUseFullCubemapShadows NOTIFY useFullCubemapShadowsChanged)
 	Q_PROPERTY(bool enableDebugInfo              READ getEnableDebugInfo        WRITE setEnableDebugInfo       NOTIFY enableDebugInfoChanged)
 	Q_PROPERTY(bool enableLocationInfo           READ getEnableLocationInfo     WRITE setEnableLocationInfo    NOTIFY enableLocationInfoChanged)
+	Q_PROPERTY(S3DRenderer::LocationInfoStyle locationInfoStyle READ getLocationInfoStyle    WRITE setLocationInfoStyle     NOTIFY locationInfoStyleChanged)
 	Q_PROPERTY(bool forceHorizonPolyline         READ getForceHorizonPolyline   WRITE setForceHorizonPolyline  NOTIFY forceHorizonPolylineChanged)
 	Q_PROPERTY(bool enableTorchLight             READ getEnableTorchLight       WRITE setEnableTorchLight      NOTIFY enableTorchLightChanged)
 	Q_PROPERTY(float torchStrength               READ getTorchStrength          WRITE setTorchStrength         NOTIFY torchStrengthChanged)
 	Q_PROPERTY(float torchRange                  READ getTorchRange             WRITE setTorchRange            NOTIFY torchRangeChanged)
 	Q_PROPERTY(float directionalLightPush        READ getDirectionalLightPush   WRITE setDirectionalLightPush  NOTIFY directionalLightPushChanged)
+	Q_PROPERTY(bool ignoreInitialView            READ getIgnoreInitialView      WRITE setIgnoreInitialView     NOTIFY ignoreInitialViewChanged)
 	Q_PROPERTY(bool enableLazyDrawing            READ getEnableLazyDrawing      WRITE setEnableLazyDrawing     NOTIFY enableLazyDrawingChanged)
 	Q_PROPERTY(double lazyDrawingInterval        READ getLazyDrawingInterval    WRITE setLazyDrawingInterval   NOTIFY lazyDrawingIntervalChanged)
 	Q_PROPERTY(bool onlyDominantFaceWhenMoving   READ getOnlyDominantFaceWhenMoving    WRITE setOnlyDominantFaceWhenMoving   NOTIFY onlyDominantFaceWhenMovingChanged)
@@ -135,11 +137,13 @@ signals:
     void useFullCubemapShadowsChanged(const bool val);
     void enableDebugInfoChanged(const bool val);
     void enableLocationInfoChanged(const bool val);
+    void locationInfoStyleChanged(S3DRenderer::LocationInfoStyle style);
     void forceHorizonPolylineChanged(const bool val);
     void enableTorchLightChanged(const bool val);
     void torchStrengthChanged(const float val);
     void torchRangeChanged(const float val);
     void directionalLightPushChanged(const float val);
+    void ignoreInitialViewChanged(const bool ignore);
     void enableLazyDrawingChanged(const bool val);
     void lazyDrawingIntervalChanged(const double val);
     void onlyDominantFaceWhenMovingChanged(const bool val);
@@ -215,9 +219,13 @@ public slots:
     void setEnableDebugInfo(const bool debugEnabled);
     bool getEnableDebugInfo() const;
 
-    //! Set to true to show the current standing positin as text on screen.
+    //! Set to true to show the current standing position as text on screen.
     void setEnableLocationInfo(const bool enableLocationInfo);
     bool getEnableLocationInfo() const;
+
+    //! Set location info style
+    void setLocationInfoStyle(const S3DRenderer::LocationInfoStyle style);
+    S3DRenderer::LocationInfoStyle getLocationInfoStyle() const;
 
     //! Set the overdrawing of a landscape (horizon) polygon after the 3D scenery.
     //! This shows the difference (error) between our planar (tangential plane) modelling and effects of earth curvature.
@@ -242,6 +250,11 @@ public slots:
     //! Example: meridiana "sundials" in Italian churches.
     void setDirectionalLightPush(const float push);
     float getDirectionalLightPush() const;
+
+    //! Allow ignoring the configured start_az_alt_fov.
+    //! This may be helpful in a digital planetarium where fov should stay at ~180...200° and view direction is usually close to zenith.
+    void setIgnoreInitialView(const bool ignore);
+    bool getIgnoreInitialView() const;
 
     //! Sets the state of the cubemap lazy-drawing mode
     void setEnableLazyDrawing(const bool val);
@@ -308,7 +321,7 @@ public slots:
     void setView(const StoredView& view, const bool setDate);
     //! Returns a StoredView that represents the current observer position + view direction.
     //! Label and description are empty.
-    StoredView getCurrentView();
+    StoredView getCurrentView() const;
 
 private slots:
     void clearMessage();
@@ -350,6 +363,7 @@ private:
     QFont font;
     QString currentMessage;
     bool forceHorizonPolyline; // if true, the LandscapeMgr is called after scene rendering to repeat rendering the landscape polygon, if one has been defined in the current Landscape.
+    bool ignoreInitialViewSettings; // if true, don't use start_az_alt_fov from the scenery3d.ini.
 
     volatile bool loadCancel;
     StelProgressController* progressBar;

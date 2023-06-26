@@ -322,7 +322,6 @@ bool Satellites::backupCatalog(bool deleteOriginal)
 			   << QDir::toNativeSeparators(backupPath);
 		return false;
 	}
-
 	return true;
 }
 
@@ -657,7 +656,7 @@ void Satellites::restoreDefaultTleSources()
 	// Other sources and supplemental data from Celestrack
 	urls << "1,https://celestrak.org/NORAD/elements/supplemental/starlink.txt"
 	     << "https://www.amsat.org/amsat/ftp/keps/current/nasabare.txt"
-	     << "https://www.prismnet.com/~mmccants/tles/classfd.zip";
+	     << "https://mmccants.org/tles/classfd.zip";
 
 	saveTleSources(urls);
 }
@@ -722,7 +721,7 @@ void Satellites::restoreDefaultSettings()
 
 void Satellites::restoreDefaultCatalog()
 {
-    if (QFileInfo::exists(catalogPath))
+	if (QFileInfo::exists(catalogPath))
 		backupCatalog(true);
 
 	QFile src(":/satellites/satellites.json");
@@ -2694,8 +2693,8 @@ QString Satellites::getSatIdFromLine2(const QString& line)
 void Satellites::loadExtraData()
 {
 	// Description of file and some additional information you can find here:
-	// 1) http://www.prismnet.com/~mmccants/tles/mccdesc.html
-	// 2) http://www.prismnet.com/~mmccants/tles/intrmagdef.html
+	// 1) https://mmccants.org/tles/mccdesc.html
+	// 2) https://mmccants.org/tles/intrmagdef.html
 	QFile qsmFile(":/satellites/qs.mag");	
 	qsMagList.clear();	
 	if (qsmFile.open(QFile::ReadOnly))

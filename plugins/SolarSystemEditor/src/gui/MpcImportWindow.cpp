@@ -55,6 +55,7 @@
 
 MpcImportWindow::MpcImportWindow()
 	: StelDialog("SolarSystemEditorMPCimport")
+	, filterProxyModel(nullptr)
 	, importType(ImportType())
 	, downloadReply(Q_NULLPTR)
 	, queryReply(Q_NULLPTR)
@@ -127,7 +128,7 @@ void MpcImportWindow::createDialogContent()
 	//connect(ui->lineEditQuery,         SIGNAL(editingFinished()),   this, SLOT(sendQuery()));
 	connect(countdownTimer,              SIGNAL(timeout()),           this, SLOT(updateCountdown()));
 
-	QSortFilterProxyModel * filterProxyModel = new QSortFilterProxyModel(this);
+	filterProxyModel = new QSortFilterProxyModel(this);
 	filterProxyModel->setSourceModel(candidateObjectsModel);
 	filterProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
 	ui->listViewObjects->setModel(filterProxyModel);
@@ -149,7 +150,7 @@ void MpcImportWindow::updateTexts()
 	ui->labelQueryLink->setText(QString(queryString).arg(linkText));
 	
 	QString firstLine(q_("Only one result will be returned if the query is successful."));
-	QString secondLine(q_("Both comets and asteroids can be identified with their number, name (in English) or provisional designation."));
+	QString secondLine(q_("Both comets and asteroids can be identified with their number, name (in English) or IAU designation."));
 	QString cPrefix("<b>C/</b>");
 	QString pPrefix("<b>P/</b>");
 	QString cometQuery("<tt>C/Halley</tt>");
@@ -157,9 +158,7 @@ void MpcImportWindow::updateTexts()
 	QString asteroidQuery("<tt>Halley</tt>");
 	QString asteroidName("(2688) Halley");
 	QString nameWarning(q_("Comet <i>names</i> need to be prefixed with %1 or %2. If more than one comet matches a name, only the first result will be returned. For example, searching for \"%3\" will return %4, Halley's Comet, but a search for \"%5\" will return the asteroid %6."));
-	QString thirdLine = QString(nameWarning).arg(cPrefix, pPrefix, cometQuery,
-	                                             cometName, asteroidQuery,
-	                                             asteroidName);
+	QString thirdLine = QString(nameWarning).arg(cPrefix, pPrefix, cometQuery, cometName, asteroidQuery, asteroidName);
 	ui->labelQueryInstructions->setText(QString("%1<br/>%2<br/>%3").arg(firstLine, secondLine, thirdLine));
 }
 
@@ -458,7 +457,7 @@ void MpcImportWindow::enableInterface(bool enable)
 	ui->pushButtonAcquire->setEnabled(enable);
 }
 
-SsoElements MpcImportWindow::readElementsFromString (QString elements)
+SsoElements MpcImportWindow::readElementsFromString(QString elements)
 {
 	Q_ASSERT(ssoManager);
 
@@ -508,36 +507,30 @@ void MpcImportWindow::switchImportType(bool)
 	ui->groupBoxSource->setVisible(true);
 }
 
-void MpcImportWindow::markAll()
+void MpcImportWindow::setCheckState(Qt::CheckState state)
 {
-	int rowCount = candidateObjectsModel->rowCount();
+	int rowCount = filterProxyModel->rowCount();
 	if (rowCount < 1)
 		return;
 
 	for (int row = 0; row < rowCount; row++)
 	{
-		QStandardItem * item = candidateObjectsModel->item(row);
+		QModelIndex proxyIndex = filterProxyModel->index(row, 0);
+		QModelIndex index = filterProxyModel->mapToSource(proxyIndex);
+		QStandardItem * item = candidateObjectsModel->itemFromIndex(index);
 		if (item)
-		{
-			item->setCheckState(Qt::Checked);
-		}
+			item->setCheckState(state);
 	}
+}
+
+void MpcImportWindow::markAll()
+{
+	setCheckState(Qt::Checked);
 }
 
 void MpcImportWindow::unmarkAll()
 {
-	int rowCount = candidateObjectsModel->rowCount();
-	if (rowCount < 1)
-		return;
-
-	for (int row = 0; row < rowCount; row++)
-	{
-		QStandardItem * item = candidateObjectsModel->item(row);
-		if (item)
-		{
-			item->setCheckState(Qt::Unchecked);
-		}
-	}
+	setCheckState(Qt::Unchecked);
 }
 
 void MpcImportWindow::updateDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
@@ -876,11 +869,11 @@ void MpcImportWindow::readQueryReply(QNetworkReply * reply)
 		file.write(reply->readAll());		
 		file.close();
 
-		QRegularExpression cometProvisionalDesignation("[PCDXI]/");
+		QRegularExpression cometIAUDesignation("[PCDXI]/");
 		QRegularExpression cometDesignation("(\\d)+[PCDXI]/");
 		QString queryData = ui->lineEditQuery->text().trimmed();
 
-		if (queryData.indexOf(cometDesignation) == 0 || queryData.indexOf(cometProvisionalDesignation) == 0)
+		if (queryData.indexOf(cometDesignation) == 0 || queryData.indexOf(cometIAUDesignation) == 0)
 			objects = readElementsFromFile(MpcComets, file.fileName());
 		else
 			objects = readElementsFromFile(MpcMinorPlanets, file.fileName());
@@ -1080,6 +1073,7 @@ void MpcImportWindow::loadBookmarks()
 
 	bookmarks[MpcComets].insert("MPC's list of observable comets",	"https://www.minorplanetcenter.net/iau/Ephemerides/Comets/Soft00Cmt.txt");
 	bookmarks[MpcComets].insert("MPCORB: comets",			"https://www.minorplanetcenter.net/iau/MPCORB/CometEls.txt");
+	bookmarks[MpcComets].insert("MPCORB: all comets and A/-objects","https://www.minorplanetcenter.net/iau/MPCORB/AllCometEls.txt");
 
 	bookmarks[MpcComets].insert("Gideon van Buitenen: comets",	"http://astro.vanbuitenen.nl/cometelements?format=mpc&mag=obs");
 
