@@ -26,7 +26,6 @@
 #include "StelSphereGeometry.hpp"
 #include "StelProjectorType.hpp"
 #include "StelTextureTypes.hpp"
-#include "StelProjector.hpp"
 #include <QString>
 #include <QVarLengthArray>
 #include <QFontMetrics>
@@ -134,6 +133,12 @@ public:
 
 	//! Draw a simple circle, 2d viewport coordinates in pixel
 	void drawCircle(float x, float y, float r);
+
+	//! Draw a simple ellipse, 2d viewport coordinates in pixel
+	//! @param rx: radius in x axis
+	//! @param ry: radius in y axis
+	//! @param angle: rotation (counterclockwise), radians [0..2pi]
+	void drawEllipse(double x, double y, double rx, double ry, double angle);
 
 	//! Draw a square using the current texture at the given projected 2d position.
 	//! This method is not thread safe.
@@ -422,6 +427,16 @@ private:
 	static QOpenGLShaderProgram* colorShaderProgram;
 	static BasicShaderVars colorShaderVars;
 
+	static QOpenGLShaderProgram* textShaderProgram;
+	struct TextShaderVars {
+		int projectionMatrix;
+		int texCoord;
+		int vertex;
+		int textColor;
+		int texture;
+	};
+	static TextShaderVars textShaderVars;
+
 	static QOpenGLShaderProgram* texturesShaderProgram;
 	struct TexturesShaderVars {
 		int projectionMatrix;
@@ -429,8 +444,6 @@ private:
 		int vertex;
 		int texColor;
 		int texture;
-		int ditherPattern;
-		int rgbMaxValue;
 	};
 	static TexturesShaderVars texturesShaderVars;
 	static QOpenGLShaderProgram* texturesColorShaderProgram;
@@ -440,8 +453,6 @@ private:
 		int vertex;
 		int color;
 		int texture;
-		int ditherPattern;
-		int rgbMaxValue;
 		int saturation;
 	};
 	static TexturesColorShaderVars texturesColorShaderVars;
@@ -465,8 +476,6 @@ private:
 		int vertex;
 	};
 	static ColorfulWideLineShaderVars colorfulWideLineShaderVars;
-
-	StelTextureSP ditherPatternTex;
 
 	static bool multisamplingEnabled;
 

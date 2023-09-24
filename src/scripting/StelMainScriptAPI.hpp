@@ -259,6 +259,7 @@ public slots:
 	//! - phase-angle : phase angle of object in radians (for Solar system objects only!)
 	//! - phase-angle-dms : phase angle of object in DMS (for Solar system objects only!)
 	//! - phase-angle-deg : phase angle of object in decimal degrees (for Solar system objects only!)
+	//! - is-waning : whether phase angle is increasing, signifying the waning phase (for Solar system objects only!)
 	//! - elongation : elongation of object in radians (for Solar system objects only!)
 	//! - elongation-dms : elongation of object in DMS (for Solar system objects only!)
 	//! - elongation-deg : elongation of object in decimal degrees (for Solar system objects only!)
@@ -474,6 +475,10 @@ public slots:
 	//! @param b if true, show the GUI, if false, hide the GUI.
 	static void setGuiVisible(bool b);
 
+	//! Show or hide the selection pointers/markers
+	//! @param b if true, show the pointer/marker around selected objects, if false, hide the pointer/marker.
+	static void setSelectedObjectMarkerVisible(bool b);
+
 	//! Use a custom CSS for the GUI. This is a very advanced feature, designing CSS is an art.
 	//! To use properly, place a private copy of normalStyle.css into your user data directory and edit style, but leave structure as-is.
 	//! @param cssStyle The file name without ".css"
@@ -560,7 +565,7 @@ public slots:
 
 	//! Find out the current sky culture
 	//! @return the ID of the current sky culture (i.e. the name of the directory in
-	//! which the curret sky cultures files are found, e.g. "western")
+	//! which the current sky cultures files are found, e.g. "western")
 	static QString getSkyCulture();
 
 	//! Set the current sky culture

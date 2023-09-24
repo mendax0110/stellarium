@@ -51,7 +51,7 @@
 
 // Define version of valid Stellarium DSO Catalog
 // This number must be incremented each time the content or file format of the stars catalogs change
-static const QString StellariumDSOCatalogVersion = "3.19";
+static const QString StellariumDSOCatalogVersion = "3.20";
 
 void NebulaMgr::setLabelsColor(const Vec3f& c) {Nebula::labelColor = c; emit labelsColorChanged(c);}
 const Vec3f NebulaMgr::getLabelsColor(void) const {return Nebula::labelColor;}
@@ -299,7 +299,7 @@ void NebulaMgr::init()
 	setEmissionObjectColor(    Vec3f(conf->value("color/dso_emission_object_color", defaultStellarColor).toString()));
 	setYoungStellarObjectColor(Vec3f(conf->value("color/dso_young_stellar_object_color", defaultStellarColor).toString()));
 
-	// for DSO convertor (for developers!)
+	// for DSO converter (for developers!)
 	flagConverter = conf->value("devel/convert_dso_catalog", false).toBool();
 	flagDecimalCoordinates = conf->value("devel/convert_dso_decimal_coord", true).toBool();
 
@@ -697,8 +697,6 @@ void NebulaMgr::draw(StelCore* core)
 	StelSkyDrawer* skyDrawer = core->getSkyDrawer();
 
 	Nebula::hintsBrightness = hintsFader.getInterstate()*flagShow.getInterstate();
-
-	sPainter.setBlending(true, GL_ONE, GL_ONE);
 
 	// Use a 4 degree margin (esp. for wide outlines)
 	const float margin = 4.f*M_PI_180f*prj->getPixelPerRadAtCenter();

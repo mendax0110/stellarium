@@ -359,6 +359,8 @@ LandscapeMgr::LandscapeMgr()
 	, defaultMinimalBrightness(0.01)
 	, flagLandscapeSetsMinimalBrightness(false)
 	, flagEnvironmentAutoEnabling(false)
+	, flagLandscapeUseTransparency(false)
+	, landscapeTransparency(0.)
 {
 	setObjectName("LandscapeMgr"); // should be done by StelModule's constructor.
 
@@ -437,7 +439,7 @@ void LandscapeMgr::update(double deltaTime)
 				setAtmosphereShowMySkyStatusText(q_("Switching models..."));
 			}
 		}
-		catch(AtmosphereShowMySky::InitFailure const& error)
+		catch(Atmosphere::InitFailure const& error)
 		{
 			qWarning() << "ERROR: Failed to load atmosphere model data:" << error.what();
 			qWarning() << "WARNING: Falling back to the Preetham's model";
@@ -522,7 +524,7 @@ void LandscapeMgr::update(double deltaTime)
 								 currentIsEarth ? moon.data() : nullptr, core->getCurrentLocation(),
 								 15.f, 40.f, static_cast<float>(drawer->getExtinctionCoefficient()), atmosphereNoScatter);
 	}
-	catch(AtmosphereShowMySky::InitFailure const& error)
+	catch(Atmosphere::InitFailure const& error)
 	{
 		qWarning().noquote() << "ShowMySky atmosphere model crashed:" << error.what();
 		qWarning() << "Loading Preetham model";
@@ -647,6 +649,8 @@ void LandscapeMgr::update(double deltaTime)
 	}
 
 	landscape->setBrightness(landscapeBrightness, lightscapeBrightness);
+	if (getFlagLandscapeUseTransparency())
+		landscape->setTransparency(landscapeTransparency);
 
 	messageFader.update(static_cast<int>(deltaTime*1000));
 }
@@ -693,15 +697,6 @@ void LandscapeMgr::draw(StelCore* core)
 		painter.setColor(1, 0, 0, messageFader.getInterstate());
 		painter.drawText(83, 70, messageToShow);
 	}
-
-	// Workaround for a bug with spherical mirror mode when we don't show the cardinal points.
-	// I am not really sure why this seems to fix the problem.  If you want to
-	// remove this, make sure the spherical mirror mode with cardinal points
-	// toggled off works properly!
-	const StelProjectorP prj = core->getProjection(StelCore::FrameAltAz, StelCore::RefractionOff);
-	QOpenGLPaintDevice device;
-	device.setSize(QSize(prj->getViewportWidth(), prj->getViewportHeight()));
-	QPainter painter(&device);
 }
 
 // Some element in drawing order behind LandscapeMgr can call this at the end of its own draw() to overdraw with the polygon line and gazetteer.
@@ -756,7 +751,7 @@ void LandscapeMgr::createAtmosphere()
 				setAtmosphereShowMySkyStatusText(QString("%1 0% %2").arg(q_("Loading..."), qc_("done","percentage of done")));
 			}
 		}
-		catch(AtmosphereShowMySky::InitFailure const& error)
+		catch(Atmosphere::InitFailure const& error)
 		{
 			qWarning() << "ERROR: Failed to initialize ShowMySky atmosphere model:" << error.what();
 			qWarning() << "WARNING: Falling back to the Preetham's model";
@@ -849,6 +844,9 @@ void LandscapeMgr::init()
 	setPolyLineThickness(conf->value("landscape/polyline_thickness", 1).toInt());
 	setLabelFontSize(conf->value("landscape/label_font_size", 18).toInt());
 	setLabelColor(Vec3f(conf->value("landscape/label_color", "0.2,0.8,0.2").toString()));
+
+	setFlagLandscapeUseTransparency(conf->value("landscape/flag_transparency", false).toBool());
+	setLandscapeTransparency(conf->value("landscape/transparency", 0.5).toDouble());
 
 	cardinalPoints = new Cardinals();
 	cardinalPoints->setFlagShow4WCRLabels(conf->value("viewing/flag_cardinal_points", true).toBool());
@@ -1113,7 +1111,10 @@ bool LandscapeMgr::getIsLandscapeFullyVisible() const
 
 double LandscapeMgr::getLandscapeSinMinAltitudeLimit() const
 {
-	return landscape->getSinMinAltitudeLimit();
+	if (flagLandscapeUseTransparency && landscapeTransparency>0.)
+		return -1.;
+	else
+		return landscape->getSinMinAltitudeLimit();
 }
 
 bool LandscapeMgr::getFlagUseLightPollutionFromDatabase() const
@@ -1255,6 +1256,17 @@ void LandscapeMgr::setFlagIllumination(const bool displayed)
 bool LandscapeMgr::getFlagIllumination() const
 {
 	return landscape->getFlagShowIllumination();
+}
+
+void LandscapeMgr::setLandscapeTransparency(const double f)
+{
+	landscapeTransparency = f;
+	emit landscapeDisplayedChanged(f);
+}
+
+double LandscapeMgr::getLandscapeTransparency() const
+{
+	return landscapeTransparency;
 }
 
 void LandscapeMgr::setFlagLabels(const bool displayed)

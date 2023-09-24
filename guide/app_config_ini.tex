@@ -474,6 +474,8 @@ base\_font\_name & string & Verdana     & Selects the name \\
 %safe\_font\_name               & string &      & Selects the name for safe font, e.g. \emph{Verdana}\\\midrule
 base\_font\_file                & string &      & Selects the name for font file, e.g. \emph{DejaVuSans.ttf}\\
 flag\_font\_selection           & bool  & false & Show GUI elements for font selection.\\\midrule
+immediate\_save\_details        & bool  & false & Set to \emph{true} to store some detail settings in the configuration dialog immediately, 
+                                                  instead of having to press ``Save settings'' explicitly.\\\midrule
 %% TODO: Is this required? timeout=0 also keeps cursor visible.
 flag\_mouse\_cursor\_timeout    & bool  & true  & Set to \emph{false} if you want to have cursor visible at all times.\\%\midrule
 mouse\_cursor\_timeout          & float & 10    & Set to \emph{0} if you want to keep the mouse cursor visible at all times. 
@@ -569,6 +571,8 @@ flag\_minimal\_brightness                  & bool  & Set \emph{true} to use mini
 flag\_landscape\_sets\_minimal\_brightness & bool  & Set \emph{true} to use value for minimal brightness for landscape from landscape settings.\\%\midrule
 flag\_enable\_illumination\_layer          & bool  & Set \emph{true} to use illumination layer for landscape.\\%\midrule
 flag\_enable\_labels                       & bool  & Set \emph{true} to use landscape labels from gazetteer layer.\\%\midrule
+flag\_transparency                         & bool  & Set \emph{true} to show landscape semitransparent.\\
+transparency                               & float & Use this transparency for landscapes. [0\ldots1] Typical value: \emph{0.5}\\
 atmospheric\_extinction\_coefficient       & float & Set atmospheric extinction coefficient $k$ [mag/airmass]\\%\midrule
 temperature\_C                             & float & Set atmospheric temperature [Celsius]\\%\midrule
 pressure\_mbar                             & float & Set atmospheric pressure [mbar]\\%\midrule
@@ -605,6 +609,7 @@ screenshot\_custom\_size    & bool   & \emph{true} if you want to specify partic
 screenshot\_custom\_width   & int    & custom width of screenshots. Max.\ available size is hardware dependent!\\
 screenshot\_custom\_height  & int    & custom height of screenshots. Max.\ available size is hardware dependent!\\
 screenshot\_dpi             & int    & DPI setting for screenshots. \\\midrule
+observinglists\_dir         & string & Default path for saving and loading observing lists. Defaults to the user's home dir.\\
 version                     & string & Version of Stellarium. This parameter may be used to detect necessary changes in config.ini file, do not edit.\\%\midrule
 use\_separate\_output\_file & bool   & Set to \emph{true} if you want to create a new file for script output for each start of Stellarium\\%\midrule
 restore\_defaults           & bool   & If \emph{true}, Stellarium will restore default settings at startup. 
@@ -849,6 +854,7 @@ screen\_y        & int    & Vertical   position of the top-left corner in window
 viewport\_effect & string & This is used when the spheric mirror display mode is activated. Values include \emph{none} and \emph{sphericMirrorDistorter}.\\%\midrule
 minimum\_fps     & int    & Sets the minimum number of frames per second to display at (hardware performance permitting)\\%\midrule
 maximum\_fps     & int    & Sets the maximum number of frames per second to display at. This is useful to reduce power consumption in laptops.\\%\midrule
+min\_time\_bewteen\_frames & int & Sets the minimum time (in milliseconds) between the end of rendering and the start of the next frame. Only takes effect on Macs. Used to work around \url{https://github.com/Stellarium/stellarium/issues/2778}.\\
 multisampling    & int    & Sets the number of samples to use for multisampling antialiasing. \emph{0} disables antialiasing, \emph{1} is no-op (single sample per pixel), 
                             higher values increase smoothness and degrade performance. Too high a value may result in excessive blurriness of the GUI. A good starting value to try is \emph{4}.\\
 planet\_shadows\_supersampling & bool & Improves quality of shadows on the Moon by evaluating the color for each multisampling sample, rather than once per pixel. 
@@ -887,7 +893,9 @@ flag\_isolated\_trails        & bool & Set to \emph{true} if you only want to se
 number\_isolated\_trails      & int  & Number of isolated trails for latest selected Solar system bodies [1..5].\\%\midrule
 max\_trail\_points            & int  & Limit maximum length of trails. Trails are drawn for 1 year or this number of computing steps.
                                        Default 5000, reduce if drawing trails slows down the program too much.\\
-flag\_isolated\_orbits        & bool & Set to \emph{true} if you want to see orbits only for selected planet and their moons.\\\midrule
+flag\_planets\_orbits\_only   & bool & Set to \emph{true} if you want to suppress orbits of minor bodies and moons.\\
+flag\_isolated\_orbits        & bool & Set to \emph{true} if you want to see orbits only for selected planet.\\
+flag\_orbits\_with\_moons     & bool & Set to \emph{true} if you want to see also orbits of the selected planet.\\\midrule
 line\_thickness               & int  & Set the line thickness for grids and lines. Typical value: \emph{1}\\%\midrule
 part\_thickness               & int  & Set the line thickness for line partitions. Typical value: \emph{1}\\\midrule
 flag\_azimutal\_grid          & bool & Display azimuthal grid \\%\midrule
@@ -955,6 +963,7 @@ use\_luminance\_adaptation         & bool  & Enable dynamic eye adaptation\\\mid
 sky\_brightness\_label\_threshold  & float & Sky brightness [$cd/m^2$] to show infotext in black \\\midrule  %% 
 flag\_landscape\_autoselection     & bool  & load fitting landscape after changing planet (use \emph{zero} landscape when no fitting found).\\
 flag\_environment\_auto\_enable    & bool  & Enable/disable atmosphere, fog and cardinals for observer location when switching planet.\\
+flag\_show\_selection\_marker      & bool  & Enable/disable visibility of pointers for selected objects.\\
 \bottomrule
 \end{longtable}
 

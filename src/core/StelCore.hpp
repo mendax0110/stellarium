@@ -74,7 +74,7 @@ public:
 	enum FrameType
 	{
 		FrameUninitialized,			//!< Reference frame is not set (FMajerech: Added to avoid condition on uninitialized value in StelSkyLayerMgr::draw())
-		FrameAltAz,				//!< Altazimuthal reference frame centered on observer.
+		FrameAltAz,				//!< Altazimuthal reference frame centered on observer: +x=south, +y=east, +z=zenith.
 		FrameHeliocentricEclipticJ2000,		//!< Fixed-ecliptic reference frame centered on the Sun. This is J2000 ecliptical / almost VSOP87.
 		FrameObservercentricEclipticJ2000,	//!< Fixed-ecliptic reference frame centered on the Observer. Was ObservercentricEcliptic, but renamed because it is Ecliptic of J2000!
 		FrameObservercentricEclipticOfDate,	//!< Moving ecliptic reference frame centered on the Observer. Ecliptic of date, i.e. includes the precession of the ecliptic.
@@ -236,6 +236,7 @@ public:
 	Vec3d altAzToJ2000(const Vec3d& v, RefractionMode refMode=RefractionAuto) const;
 	Vec3d j2000ToAltAz(const Vec3d& v, RefractionMode refMode=RefractionAuto) const;
 	void j2000ToAltAzInPlaceNoRefraction(Vec3f* v) const {v->transfo4d(matJ2000ToAltAz);}
+	void j2000ToAltAzInPlaceNoRefraction(Vec3d* v) const {v->transfo4d(matJ2000ToAltAz);}
 	Vec3d galacticToJ2000(const Vec3d& v) const;
 	Vec3d supergalacticToJ2000(const Vec3d& v) const;
 	//! Transform position vector v from equatorial coordinates of date (which may also include atmospheric refraction) to those of J2000.
@@ -305,6 +306,9 @@ public:
 
 	//! Return the observer heliocentric ecliptic position (GZ: presumably J2000)
 	Vec3d getObserverHeliocentricEclipticPos() const;
+	//! Return the observer heliocentric ecliptic velocity. This includes orbital and diurnal motion;
+	// diurnal motion is omitted if planetocentric coordinates are in use.
+	Vec3d getObserverHeliocentricEclipticVelocity() const;
 
 	//! Get the information on the current location
 	const StelLocation& getCurrentLocation() const;
@@ -404,7 +408,7 @@ public slots:
 	//! Set the mask type.
 	void setMaskType(StelProjector::StelProjectorMaskType m);
 
-	//! Set the flag with decides whether to arrage labels so that
+	//! Set the flag with decides whether to arrange labels so that
 	//! they are aligned with the bottom of a 2d screen, or a 3d dome.
 	void setFlagGravityLabels(bool gravity);
 	//! return whether dome-aligned labels are in use

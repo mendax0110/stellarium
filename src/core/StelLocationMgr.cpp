@@ -414,6 +414,8 @@ StelLocationMgr::StelLocationMgr()
 	// The first entry is the DB name, the second is as we display it in the program.
 	if (locationDBToIANAtranslations.isEmpty())
 	{
+		// Reported July 7, 2023 (#3316)
+		locationDBToIANAtranslations.insert("Asia/Calcutta", "Asia/Kolkata");
 		// Reported April 25, 2023. (#3200)
 		locationDBToIANAtranslations.insert("America/Yellowknife","America/Edmonton");
 		// Seen February 06, 2023.
@@ -592,20 +594,22 @@ LocationMap StelLocationMgr::loadCitiesBin(const QString& fileName)
 			}
 			else
 			{
-				qDebug() << "StelLocationMgr::loadCitiesBin(): TimeZone for " << loc.name <<  " not found: " << loc.ianaTimeZone;
-				unknownTZlist.append(loc.ianaTimeZone);
+				if (!unknownTZlist.contains(loc.ianaTimeZone))
+				{
+					qDebug() << "StelLocationMgr::loadCitiesBin(): TimeZone for " << loc.name <<  " not found: " << loc.ianaTimeZone;
+					unknownTZlist.append(loc.ianaTimeZone);
+				}
 			}
 		}
 	}
 	if (unknownTZlist.length()>0)
 	{
-		unknownTZlist.removeDuplicates();
-		qDebug() << "StelLocationMgr::loadCitiesBin(): Summary of unknown TimeZones:";
+		qInfo() << "StelLocationMgr::loadCitiesBin(): Summary of unknown TimeZones:";
 		for (const auto& tz : unknownTZlist)
 		{
-			qDebug() << tz;
+			qInfo() << tz;
 		}
-		qDebug() << "Please report these timezone names (this logfile) to the Stellarium developers.";
+		qInfo() << "Please report these timezone names (this logfile) to the Stellarium developers.";
 		// Note to developers: Fill those names and replacements to the map above.
 	}
 
@@ -1251,7 +1255,7 @@ void StelLocationMgr::loadCountries()
 	}
 	// aliases for some countries to backward compatibility
 	countryNameToCodeMap.insert("Russian Federation", "ru");
-	countryNameToCodeMap.insert("Taiwan (Provice of China)", "tw");
+	countryNameToCodeMap.insert("Taiwan (Province of China)", "tw");
 }
 
 void StelLocationMgr::loadRegions()

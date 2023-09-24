@@ -740,6 +740,7 @@ innerbottommargin=5pt]{cBox}
 \makeatother
 
 \usepackage{marvosym}% For the Zodiac symbols, \Aries etc.
+\usepackage{wasysym}% For \diameter etc.
 \usepackage{tocvsec2} % Allows fine-tuning TOC depth. (to suppress GPL sections in TOC but have them still numbered)
 %\newenvironment{commands}{\begin{wBox}\begin{Verbatim}}{\end{Verbatim}\end{wBox}}
 %\DefineVerbatimEnvironment{commands}{\begin{wBox}\begin{Verbatim}}{\end{Verbatim}\end{wBox}}
@@ -750,7 +751,7 @@ innerbottommargin=5pt]{cBox}
 
 
 \ifpdf
- \usepackage[os=win]{menukeys}% For the menu, keycaps, etc. This reqiures the updated catoptions.sty.
+ \usepackage[os=win]{menukeys}% For the menu, keycaps, etc. This requires the updated catoptions.sty.
  %% Keypress buttons. This is just a font change now, but can be a boxed key or such.
  % Prefer using menukeys.
  \newcommand{\key}[1]{\keys{#1}}

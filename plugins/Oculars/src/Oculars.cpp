@@ -1538,17 +1538,17 @@ bool Oculars::isBinocularDefined()
 }
 
 QRect Oculars::drawSensorFrameAndOverlay(const StelProjectorP& projector, const Mat4f& derotate,
-										 const Vec2f& frameUpDir, const Vec2f& frameRightDir,
-										 const Vec2f& frameCenter, const CCD& ccd, const Lens& lens,
-										 const QSize& overlaySize)
+                                         const Vec2f& frameUpDir, const Vec2f& frameRightDir,
+                                         const Vec2f& frameCenter, const CCD& ccd, const Lens* lens,
+                                         const QSize& overlaySize)
 {
 	StelPainter sPainter(projector);
 	sPainter.setLineSmooth(true);
 	sPainter.setColor(lineColor);
 	Telescope *telescope = telescopes[selectedTelescopeIndex];
 
-	const double fovX = ccd.getActualFOVx(telescope, &lens) * (M_PI/180);
-	const double fovY = ccd.getActualFOVy(telescope, &lens) * (M_PI/180);
+	const double fovX = ccd.getActualFOVx(telescope, lens) * (M_PI/180);
+	const double fovY = ccd.getActualFOVy(telescope, lens) * (M_PI/180);
 
 	const float tanFovX = std::tan(fovX/2);
 	const float tanFovY = std::tan(fovY/2);
@@ -1702,21 +1702,21 @@ void Oculars::drawCirclesOfConstantAngularRadii(StelPainter& sPainter, const Mat
 }
 
 void Oculars::drawOAG(const StelProjectorP& projector, const Mat4f& derotate,
-					  const CCD& ccd, const Lens& lens)
+                      const CCD& ccd, const Lens* lens)
 {
 	StelPainter sPainter(projector);
 	sPainter.setLineSmooth(true);
 	sPainter.setColor(lineColor);
 
 	Telescope *telescope = telescopes[selectedTelescopeIndex];
-	const float innerRadius = ccd.getInnerOAGRadius(telescope, &lens) * (M_PI/180);
-	const float outerRadius = ccd.getOuterOAGRadius(telescope, &lens) * (M_PI/180);
+	const float innerRadius = ccd.getInnerOAGRadius(telescope, lens) * (M_PI/180);
+	const float outerRadius = ccd.getOuterOAGRadius(telescope, lens) * (M_PI/180);
 
 	drawCirclesOfConstantAngularRadii(sPainter, derotate, {innerRadius,outerRadius});
 
 	const int numPointsPerLine = 30;
 
-	const float prismFovX = ccd.getOAGActualFOVx(telescope, &lens) * (M_PI/180);
+	const float prismFovX = ccd.getOAGActualFOVx(telescope, lens) * (M_PI/180);
 	const float tanFovX = std::tan(prismFovX/2);
 
 	const auto tanInnerRadius = std::tan(innerRadius);
@@ -1819,8 +1819,8 @@ void Oculars::paintCCDBounds()
 	double azimuth, elevation;
 	StelUtils::rectToSphe(&azimuth, &elevation, centerPos3d);
 	const auto derotate = Mat4f::rotation(Vec3f(0,0,1), azimuth) *
-						  Mat4f::rotation(Vec3f(0,1,0), -elevation) *
-						  Mat4f::rotation(Vec3f(1,0,0), ccd->chipRotAngle() * (M_PI/180));
+			      Mat4f::rotation(Vec3f(0,1,0), -elevation) *
+			      Mat4f::rotation(Vec3f(1,0,0), ccd->chipRotAngle() * (M_PI/180));
 
 	if (getFlagAutosetMountForCCD())
 	{
@@ -1836,13 +1836,13 @@ void Oculars::paintCCDBounds()
 	projector->project(derotate * Vec3f(1,0,0), frameCenterWin);
 	projector->project(derotate * Vec3f(1,-1,0), frameRightWin);
 	const auto frameUpWinDir = normalize(Vec2f(frameUpWin[0] - frameCenterWin[0],
-											   frameUpWin[1] - frameCenterWin[1]));
+						   frameUpWin[1] - frameCenterWin[1]));
 	const auto frameRightWinDir = normalize(Vec2f(frameRightWin[0] - frameCenterWin[0],
-											   frameRightWin[1] - frameCenterWin[1]));
+						      frameRightWin[1] - frameCenterWin[1]));
 	const auto frameCenterWin2d = Vec2f(frameCenterWin[0], frameCenterWin[1]);
 
 	const auto boundingRect = drawSensorFrameAndOverlay(projector, derotate, frameUpWinDir, frameRightWinDir,
-														frameCenterWin2d, *ccd, *lens, overlaySize);
+	                                                    frameCenterWin2d, *ccd, lens, overlaySize);
 	StelPainter painter(projector);
 	painter.setLineSmooth(true);
 	painter.setColor(lineColor);
@@ -1853,7 +1853,7 @@ void Oculars::paintCCDBounds()
 		const auto derotateOAG = Mat4f::rotation(Vec3f(0,0,1), azimuth) *
 					 Mat4f::rotation(Vec3f(0,1,0), -elevation) *
 					 Mat4f::rotation(Vec3f(1,0,0), (ccd->prismPosAngle() + ccd->chipRotAngle()) * (M_PI/180));
-		drawOAG(projector, derotateOAG, *ccd, *lens);
+		drawOAG(projector, derotateOAG, *ccd, lens);
 	}
 
 	// Tool for planning a mosaic astrophotography: shows a small cross at center of CCD's
@@ -1949,10 +1949,9 @@ void Oculars::paintCCDBounds()
 		// Horizontal and vertical scales of visible field of view for CCD (red rectangle); below bottom-right corner
 		//TRANSLATORS: Unit of measure for scale - arc-seconds per pixel
 		QString unit = q_("\"/px");
-		QString scales = QString("%1%3 %4 %2%3")
-							.arg(QString::number(3600*ccd->getCentralAngularResolutionX(telescope, lens), 'f', 4),
-								 QString::number(3600*ccd->getCentralAngularResolutionY(telescope, lens), 'f', 4),
-								 unit, QChar(0x00D7));
+		QString scales = QString("%1%3 %4 %2%3").arg(QString::number(3600*ccd->getCentralAngularResolutionX(telescope, lens), 'f', 4),
+							     QString::number(3600*ccd->getCentralAngularResolutionY(telescope, lens), 'f', 4),
+							     unit, QChar(0x00D7));
 		const auto scalesBR = fm.boundingRect(scales);
 		a = transform.map(QPoint(rightX - std::lround(scalesBR.width() * fmPixelRatio),
 								 bottomY - std::lround(scalesBR.height() * fmPixelRatio)));
@@ -2401,15 +2400,15 @@ void Oculars::validateAndLoadIniFile()
 	}
 	else
 	{
-		qDebug() << "Oculars::validateAndLoadIniFile() ocular.ini exists at: " << QDir::toNativeSeparators(ocularIniPath) << ". Checking version...";
+		qDebug().noquote() << "Oculars::validateAndLoadIniFile() ocular.ini exists at:" << QDir::toNativeSeparators(ocularIniPath) << ". Checking version...";
 		QSettings mySettings(ocularIniPath, QSettings::IniFormat);
 		const float ocularsVersion = mySettings.value("oculars_version", 0.0).toFloat();
-		qWarning() << "Oculars::validateAndLoadIniFile() found existing ini file version " << ocularsVersion;
+		qWarning() << "Oculars::validateAndLoadIniFile() found existing ini file version" << ocularsVersion;
 
 		if (ocularsVersion < MIN_OCULARS_INI_VERSION)
 		{
-			qWarning() << "Oculars::validateAndLoadIniFile() existing ini file version " << ocularsVersion
-				   << " too old to use; required version is " << MIN_OCULARS_INI_VERSION << ". Copying over new one.";
+			qWarning() << "Oculars::validateAndLoadIniFile() existing ini file version" << ocularsVersion
+				   << "too old to use; required version is" << MIN_OCULARS_INI_VERSION << ". Copying over new one.";
 			// delete last "old" file, if it exists
 			QFile deleteFile(ocularIniPath + ".old");
 			deleteFile.remove();
@@ -2418,19 +2417,19 @@ void Oculars::validateAndLoadIniFile()
 			QFile oldFile(ocularIniPath);
 			if (!oldFile.rename(ocularIniPath + ".old"))
 			{
-				qWarning() << "Oculars::validateAndLoadIniFile() cannot move ocular.ini resource to ocular.ini.old at path  " + QDir::toNativeSeparators(ocularIniPath);
+				qWarning() << "Oculars::validateAndLoadIniFile() cannot move ocular.ini resource to ocular.ini.old at path" + QDir::toNativeSeparators(ocularIniPath);
 			}
 			else
 			{
-				qWarning() << "Oculars::validateAndLoadIniFile() ocular.ini resource renamed to ocular.ini.old at path  " + QDir::toNativeSeparators(ocularIniPath);
+				qWarning() << "Oculars::validateAndLoadIniFile() ocular.ini resource renamed to ocular.ini.old at path" + QDir::toNativeSeparators(ocularIniPath);
 				QFile src(":/ocular/default_ocular.ini");
 				if (!src.copy(ocularIniPath))
 				{
-					qWarning() << "Oculars::validateIniFile cannot copy default_ocular.ini resource to [non-existing] " + QDir::toNativeSeparators(ocularIniPath);
+					qWarning() << "Oculars::validateIniFile cannot copy default_ocular.ini resource to [non-existing]" + QDir::toNativeSeparators(ocularIniPath);
 				}
 				else
 				{
-					qDebug() << "Oculars::validateAndLoadIniFile() copied default_ocular.ini to " << QDir::toNativeSeparators(ocularIniPath);
+					qDebug() << "Oculars::validateAndLoadIniFile() copied default_ocular.ini to" << QDir::toNativeSeparators(ocularIniPath);
 					// The resource is read only, and the new file inherits this...  make sure the new file
 					// is writable by the Stellarium process so that updates can be done.
 					QFile dest(ocularIniPath);

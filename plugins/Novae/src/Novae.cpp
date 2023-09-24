@@ -33,6 +33,7 @@
 #include "Novae.hpp"
 #include "NovaeDialog.hpp"
 #include "StelProgressController.hpp"
+#include "StarMgr.hpp"
 
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -158,11 +159,11 @@ void Novae::init()
 	}
 	else
 	{
-		qDebug() << "[Novae] novae.json does not exist - copying default file to" << QDir::toNativeSeparators(novaeJsonPath);
+		qDebug().noquote() << "[Novae] novae.json does not exist - copying default file to" << QDir::toNativeSeparators(novaeJsonPath);
 		restoreDefaultJsonFile();
 	}
 
-	qDebug() << "[Novae] loading catalog file:" << QDir::toNativeSeparators(novaeJsonPath);
+	qDebug().noquote() << "[Novae] Loading catalog file:" << QDir::toNativeSeparators(novaeJsonPath);
 
 	readJsonFile();
 
@@ -178,6 +179,8 @@ void Novae::init()
 
 	connect(this, SIGNAL(jsonUpdateComplete(void)), this, SLOT(reloadCatalog()));
 	connect(StelApp::getInstance().getCore(), SIGNAL(configurationDataSaved()), this, SLOT(saveSettings()));
+	StarMgr* smgr = GETSTELMODULE(StarMgr);
+	connect(smgr, SIGNAL(starLabelsDisplayedChanged(bool)), this, SLOT(setFlagSyncShowLabels(bool)));
 
 	GETSTELMODULE(StelObjectMgr)->registerStelObjectMgr(this);
 }
@@ -218,8 +221,7 @@ void Novae::drawPointer(StelCore* core, StelPainter &painter)
 		if (!painter.getProjector()->project(pos, screenpos))
 			return;
 
-		const Vec3f& c(obj->getInfoColor());
-		painter.setColor(c[0],c[1],c[2]);
+		painter.setColor(obj->getInfoColor());
 		texPointer->bind();
 		painter.setBlending(true);
 		painter.drawSprite2dMode(screenpos[0], screenpos[1], 13.f, StelApp::getInstance().getTotalRunTime()*40.);

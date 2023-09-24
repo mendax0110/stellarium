@@ -275,10 +275,8 @@ NGC  1545            _("Running Man Cluster") # HT
 NGC  1545            _("Magic Pentagram Cluster") # HT
 NGC  1554            _("Struve's Lost Nebula") # WSO, B500, RNGCIC
 NGC  1554            _("Struve's Nebula") # SIMBAD
-NGC  1554            _("Hind's Variable Nebula") # PSA, B500, U2K
 NGC  1555            _("Hind's Variable Nebula") # SIMBAD, BCH, DWH, WSO, PSA, B500, RNGCIC, U2K
 NGC  1555            _("Hind's Nebula") # SIMBAD
-NGC  1555            _("Struveis Lost Nebula") # U2K
 NGC  1566            _("Doradus Cluster") # SIMBAD
 NGC  1566            _("Spanish Dancer Galaxy") # NASA, CSOG-BCH
 NGC  1566            _("NGC 1566 Group") # SIMBAD
@@ -652,7 +650,6 @@ NGC  5128            _("Centaurus A") # NED, TSS, BCH, SG, WSO, WSG, PSA, DN, PA
 NGC  5128            _("The Hamburger Galaxy") # SG
 NGC  5139            _("ω Cen Cluster") # WK, OGSC, TSS, BCH, DWH, SG, PSA, DN, PAS, PGH, TLO, RNGCIC
 NGC  5139            _("Omega Centauri") # U2K
-NGC  5156            _("Centaurus A") # U2K
 NGC  5189            _("Spiral Planetary Nebula") # TSS, SG, TLO
 NGC  5194            _("Whirlpool Galaxy") # NED, DSW, BCH, DWH, SOG, WSO, WSG, PSA, CC, DN, B500, PAS, TLO, RNGCIC, SEDSM, U2K
 NGC  5194            _("Question Mark Galaxy") # NED, SEDSM

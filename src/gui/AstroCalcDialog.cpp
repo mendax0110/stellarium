@@ -139,6 +139,7 @@ AstroCalcDialog::AstroCalcDialog(QObject* parent)
 
 AstroCalcDialog::~AstroCalcDialog()
 {
+	EphemerisList.clear();
 	if (currentTimeLine)
 	{
 		currentTimeLine->stop();
@@ -1969,6 +1970,7 @@ void AstroCalcDialog::generateEphemeris()
 			item.objDate = JD;
 			item.magnitude = obj->getVMagnitudeWithExtinction(core);
 			item.isComet = obj->getPlanetType()==Planet::isComet;
+			item.sso = obj;
 			EphemerisList.append(item);
 
 			Vec3d observerHelioPos = core->getObserverHeliocentricEclipticPos();
@@ -2167,13 +2169,13 @@ void AstroCalcDialog::generateRTS()
 				{
 					altStr = StelUtils::radToDecDegStr(alt, 5, false, true);
 					elongSStr = (selectedObject==sun) ?                   dash : StelUtils::radToDecDegStr(selectedObject->getJ2000EquatorialPos(core).angle(sun->getJ2000EquatorialPos(core)), 5, false, true);
-					elongLStr = (selectedObject==moon && planet==earth) ? dash : StelUtils::radToDecDegStr(selectedObject->getJ2000EquatorialPos(core).angle(moon->getJ2000EquatorialPos(core)), 5, false, true);
+					elongLStr = (selectedObject==moon || planet!=earth) ? dash : StelUtils::radToDecDegStr(selectedObject->getJ2000EquatorialPos(core).angle(moon->getJ2000EquatorialPos(core)), 5, false, true);
 				}
 				else
 				{
 					altStr = StelUtils::radToDmsStr(alt, true);
 					elongSStr = (selectedObject==sun)                   ? dash : StelUtils::radToDmsStr(selectedObject->getJ2000EquatorialPos(core).angle(sun->getJ2000EquatorialPos(core)), true);
-					elongLStr = (selectedObject==moon && planet==earth) ? dash : StelUtils::radToDmsStr(selectedObject->getJ2000EquatorialPos(core).angle(moon->getJ2000EquatorialPos(core)), true);
+					elongLStr = (selectedObject==moon || planet!=earth) ? dash : StelUtils::radToDmsStr(selectedObject->getJ2000EquatorialPos(core).angle(moon->getJ2000EquatorialPos(core)), true);
 				}
 				magnitude = selectedObject->getVMagnitudeWithExtinction(core);
 				magStr = (magnitude > 50.f || selectedObject->getEnglishName().contains("marker", Qt::CaseInsensitive)? dash : QString::number(magnitude, 'f', 2));

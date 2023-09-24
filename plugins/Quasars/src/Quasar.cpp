@@ -192,11 +192,6 @@ float Quasar::getSelectPriority(const StelCore* core) const
 	return mag;
 }
 
-void Quasar::update(double deltaTime)
-{
-	labelsFader.update(static_cast<int>(deltaTime*1000));
-}
-
 void Quasar::draw(StelCore* core, StelPainter& painter)
 {
 	Vec3d win;
@@ -237,10 +232,10 @@ void Quasar::draw(StelCore* core, StelPainter& painter)
 			// allow height-dependent twinkle and suppress twinkling in higher altitudes. Keep 0.1 twinkle amount in zenith.
 			sd->drawPointSource(&painter, vf.toVec3d(), rcMag, sd->indexToColor(BvToColorIndex(bV)), true, qMin(1.0f, 1.0f-0.9f*altAz[2]));
 			sd->postDrawPointSource(&painter);
-			painter.setColor(color[0], color[1], color[2], 1);
+			painter.setColor(color, 1);
 		}
 
-		if (labelsFader.getInterstate()<=0.f && !distributionMode && (mag+2.f)<mlimit)
+		if (!distributionMode && (mag+2.f)<mlimit)
 			painter.drawText(getJ2000EquatorialPos(core), designation, 0, shift, shift, false);
 	}
 }
